@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>여행사 CRM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyACEAVB83zrsuEOG-np9uc9JOWbUuR4hDg",
+  authDomain: "muhan-crm.firebaseapp.com",
+  projectId: "muhan-crm",
+  storageBucket: "muhan-crm.firebasestorage.app",
+  messagingSenderId: "1049093802281",
+  appId: "1:1049093802281:web:e84d1349c8a54b0a290f38"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+window.fbSave = async (col, id, data) => { try { await db.collection(col).doc(id).set(data); } catch(e) { console.error(e); } };
+window.fbDelete = async (col, id) => { try { await db.collection(col).doc(id).delete(); } catch(e) { console.error(e); } };
+window.fbListen = (col, cb) => db.collection(col).onSnapshot(snap => cb(snap.docs.map(d => d.data())));
+window.fbReady = true;
+window.dispatchEvent(new Event('fbReady'));
+</script>
+<style>
+:root{
+  --navy:#2C3E50;--navy2:#34495E;--sky:#4A90B8;
+  --accent:#D4956A;--bg:#F7F8FA;--card:#FFF;--border:#E8ECF0;
+  --text:#1A202C;--text2:#64748B;--text3:#94A3B8;
+  --green:#4A9B6F;--green-bg:#EDF7F2;
+  --yellow:#B8913A;--yellow-bg:#FBF5E0;
+  --blue:#4A7BC8;--blue-bg:#EBF2FB;
+  --red:#C0504A;--red-bg:#FAEAEA;
+  --gray:#6B7280;--gray-bg:#F3F4F6;
+  --purple:#7B68C8;--purple-bg:#EEECFB;
+  --orange:#C07840;--orange-bg:#FAF0E4;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:15px;}
+#loginPage{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#3D4F61;}
+.login-card{background:var(--card);border-radius:20px;padding:40px 36px;width:360px;box-shadow:0 32px 80px rgba(0,0,0,.4);}
+.login-logo{text-align:center;margin-bottom:28px;}
+.login-logo .icon{font-size:40px;display:block;margin-bottom:10px;}
+.login-logo h1{font-size:22px;font-weight:800;color:var(--navy);}
+.login-logo p{font-size:14px;color:var(--text2);margin-top:4px;}
+.login-divider{font-size:12px;color:var(--text3);text-align:center;margin:18px 0 14px;font-weight:600;letter-spacing:1px;text-transform:uppercase;}
+.staff-btn{width:100%;display:flex;align-items:center;gap:14px;padding:13px 16px;border:2px solid var(--border);border-radius:14px;background:var(--bg);cursor:pointer;margin-bottom:10px;transition:all .15s;text-align:left;}
+.staff-btn:hover{border-color:var(--sky);background:#EFF6FF;transform:translateY(-1px);}
+.av{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;flex-shrink:0;}
+.av1{background:var(--blue-bg);color:var(--blue);}
+.av2{background:var(--green-bg);color:var(--green);}
+.av3{background:var(--purple-bg);color:var(--purple);}
+.sname{font-size:15px;font-weight:700;color:var(--text);}
+.srole{font-size:13px;color:var(--text2);}
+.admin-tag{font-size:11px;background:var(--accent);color:#fff;padding:1px 6px;border-radius:4px;margin-left:6px;font-weight:700;}
+.login-pw{margin-top:18px;}
+.login-pw input{width:100%;padding:12px 14px;border-radius:10px;border:2px solid var(--border);font-size:15px;color:var(--text);background:var(--bg);}
+.login-pw input:focus{outline:none;border-color:var(--sky);}
+.login-pw-btn{width:100%;margin-top:10px;padding:12px;background:var(--navy);color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+.login-pw-btn:hover{background:var(--navy2);}
+.login-err{color:var(--red);font-size:13px;margin-top:6px;text-align:center;display:none;}
+.back-btn{width:100%;margin-top:6px;padding:9px;background:none;border:none;color:var(--text2);font-size:14px;cursor:pointer;}
+#app{display:none;flex-direction:column;min-height:100vh;}
+.topbar{background:#2C3E50;color:#fff;height:54px;display:flex;align-items:center;padding:0 20px;position:sticky;top:0;z-index:50;box-shadow:0 2px 12px rgba(0,0,0,.3);}
+.brand{font-size:15px;font-weight:800;display:flex;align-items:center;gap:8px;margin-right:24px;}
+.nav-tabs{display:flex;gap:2px;}
+.nav-tab{padding:8px 16px;border-radius:8px;font-size:14px;font-weight:600;color:rgba(255,255,255,.55);cursor:pointer;transition:all .15s;position:relative;}
+.nav-tab:hover{color:#fff;background:rgba(255,255,255,.08);}
+.nav-tab.on{color:#fff;background:rgba(255,255,255,.15);}
+.nav-badge{position:absolute;top:4px;right:4px;min-width:16px;height:16px;background:#E53E3E;border-radius:8px;font-size:10px;font-weight:800;color:#fff;display:flex;align-items:center;justify-content:center;padding:0 3px;}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.user-info{font-size:13px;color:rgba(255,255,255,.65);}
+.logout-btn{font-size:13px;color:rgba(255,255,255,.45);cursor:pointer;padding:5px 10px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:none;}
+.logout-btn:hover{color:#fff;}
+.alert-banner{background:linear-gradient(135deg,#c0392b,#e74c3c);color:#fff;padding:10px 20px;font-size:13px;font-weight:600;display:none;align-items:center;gap:10px;flex-wrap:wrap;}
+.alert-banner.on{display:flex;}
+.alert-item{background:rgba(255,255,255,.18);border-radius:7px;padding:4px 10px;cursor:pointer;white-space:nowrap;}
+.alert-item:hover{background:rgba(255,255,255,.28);}
+.page{display:none;padding:22px;}
+.page.on{display:block;}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;}
+.ph h2{font-size:19px;font-weight:800;color:var(--navy);}
+.ph-actions{display:flex;gap:8px;}
+.btn{padding:10px 18px;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:5px;}
+.btn-primary{background:var(--navy);color:#fff;}
+.btn-primary:hover{background:var(--navy2);}
+.btn-secondary{background:var(--card);color:var(--text);border:1.5px solid var(--border);}
+.btn-secondary:hover{border-color:var(--sky);color:var(--sky);}
+.btn-danger{background:var(--red-bg);color:var(--red);}
+.btn-accent{background:var(--accent);color:#fff;font-size:13px;padding:5px 12px;}
+.stats{display:grid;gap:12px;margin-bottom:18px;}
+.stat-card{background:var(--card);border-radius:14px;padding:20px 24px;border:1px solid var(--border);}
+.stat-label{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;}
+.stat-value{font-size:28px;font-weight:800;color:var(--navy);letter-spacing:-1px;}
+.stat-sub{font-size:12px;color:var(--text3);margin-top:2px;}
+.filter-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;}
+.filter-bar input,.filter-bar select{padding:10px 14px;border-radius:10px;border:1.5px solid var(--border);font-size:14px;color:var(--text);background:var(--card);}
+.filter-bar input{flex:1;min-width:160px;}
+.filter-bar input:focus,.filter-bar select:focus{outline:none;border-color:var(--sky);}
+.tbl-wrap{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+th{padding:12px 15px;text-align:left;font-size:12px;font-weight:700;color:var(--text2);background:var(--bg);border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.4px;}
+td{padding:13px 15px;border-bottom:1px solid #F8FAFC;vertical-align:middle;}
+tr:last-child td{border-bottom:none;}
+tbody tr{cursor:pointer;transition:background .1s;}
+tbody tr:hover td{background:#F0F7FF;}
+.td-name{font-weight:700;color:var(--navy);}
+.td-code{font-size:12px;color:var(--text3);font-family:monospace;}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap;}
+.b-blue{background:var(--blue-bg);color:var(--blue);}
+.b-yellow{background:var(--yellow-bg);color:var(--yellow);}
+.b-green{background:var(--green-bg);color:var(--green);}
+.b-red{background:var(--red-bg);color:var(--red);}
+.b-gray{background:var(--gray-bg);color:var(--gray);}
+.b-orange{background:var(--orange-bg);color:var(--orange);}
+.b-purple{background:var(--purple-bg);color:var(--purple);}
+.urgent-badge{background:#E53E3E;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;margin-left:5px;font-weight:800;}
+/* 등급 배지 */
+.grade-vvip{background:#1a1a2e;color:#FFD700;}
+.grade-vip{background:#6B21A8;color:#E9D5FF;}
+.grade-gold{background:#B45309;color:#FEF3C7;}
+.grade-silver{background:#475569;color:#E2E8F0;}
+.grade-new{background:var(--gray-bg);color:var(--gray);}
+.view-toggle{display:flex;gap:6px;margin-bottom:14px;}
+.vt-btn{padding:6px 14px;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;border:1.5px solid var(--border);background:var(--card);color:var(--text2);}
+.vt-btn.on{background:var(--navy);color:#fff;border-color:var(--navy);}
+.pipeline{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.pipe-col{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:13px;}
+.pipe-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px;}
+.pipe-count{font-size:12px;padding:2px 7px;border-radius:10px;background:var(--bg);color:var(--text2);font-weight:600;}
+.pipe-card{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:13px 14px;margin-bottom:7px;cursor:pointer;transition:all .15s;}
+.pipe-card:hover{border-color:var(--sky);background:#EFF6FF;transform:translateY(-1px);}
+.pipe-card-name{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.pipe-card-code{font-size:11px;color:var(--text3);font-family:monospace;margin-bottom:4px;}
+.pipe-card-meta{font-size:12px;color:var(--text2);display:flex;flex-direction:column;gap:2px;}
+.cal-nav{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.cal-nav-btn{background:var(--card);border:1.5px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:17px;color:var(--text);}
+.cal-nav-btn:hover{border-color:var(--sky);color:var(--sky);}
+.cal-month{font-size:17px;font-weight:800;color:var(--navy);}
+.cal-wrap{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+.cal-head{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);}
+.cal-wd{text-align:center;padding:9px;font-size:12px;font-weight:700;color:var(--text2);}
+.cal-body{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{border-right:1px solid #F1F5F9;border-bottom:1px solid #F1F5F9;min-height:90px;padding:7px;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-date{font-size:13px;color:var(--text3);margin-bottom:4px;font-weight:600;}
+.cal-date.today{width:22px;height:22px;background:var(--navy);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;}
+.cal-event{font-size:11px;font-weight:700;padding:2px 6px;border-radius:4px;margin-bottom:2px;cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ev-green{background:var(--green-bg);color:var(--green);}
+.ev-blue{background:var(--blue-bg);color:var(--blue);}
+.ev-red{background:var(--red-bg);color:var(--red);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(11,31,58,.55);z-index:100;overflow-y:auto;padding:28px 16px;}
+.overlay.on{display:flex;align-items:flex-start;justify-content:center;}
+.modal{background:var(--card);border-radius:20px;width:100%;max-width:680px;box-shadow:0 32px 80px rgba(0,0,0,.25);}
+.modal-head{padding:22px 28px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.modal-head h2{font-size:16px;font-weight:800;color:var(--navy);}
+.modal-close{background:none;border:none;font-size:21px;cursor:pointer;color:var(--text2);padding:2px 6px;border-radius:6px;}
+.modal-close:hover{background:var(--bg);}
+.modal-body{padding:24px 28px;display:flex;flex-direction:column;gap:14px;max-height:74vh;overflow-y:auto;}
+.modal-foot{padding:16px 28px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;}
+.modal-foot-right{display:flex;gap:8px;}
+.fsec{font-size:12px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:1px;padding-bottom:8px;border-bottom:2px solid var(--blue-bg);margin-top:4px;}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:11px;}
+.form-row.three{grid-template-columns:1fr 1fr 1fr;}
+.form-row.one{grid-template-columns:1fr;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg.full{grid-column:1/-1;}
+.fg label{font-size:12px;font-weight:700;color:var(--text2);}
+.fg input,.fg select,.fg textarea{padding:11px 13px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;color:var(--text);background:#FAFBFC;transition:border-color .15s;autocomplete:off;}
+.fg input:focus,.fg select:focus,.fg textarea:focus{outline:none;border-color:var(--sky);background:#fff;}
+.fg textarea{resize:vertical;min-height:72px;line-height:1.6;}
+.fg input[readonly]{background:#F0F7FF;font-weight:700;color:var(--navy);}
+.code-display{font-size:14px;padding:9px 11px;border-radius:9px;background:#F0F7FF;color:var(--navy);font-weight:700;border:1.5px solid var(--border);}
+.aapis-table{width:100%;border-collapse:collapse;font-size:13px;}
+.aapis-table th{padding:7px 9px;background:var(--bg);font-size:11px;font-weight:700;color:var(--text2);border:1px solid var(--border);text-align:left;}
+.aapis-table td{padding:4px 6px;border:1px solid var(--border);}
+.aapis-table input{width:100%;padding:5px 7px;border:none;background:transparent;font-size:13px;color:var(--text);}
+.aapis-table input:focus{outline:1px solid var(--sky);border-radius:3px;}
+.aapis-add-btn{margin-top:7px;font-size:13px;padding:5px 11px;border-radius:8px;border:1.5px dashed var(--border);background:none;cursor:pointer;color:var(--text2);}
+.aapis-add-btn:hover{border-color:var(--sky);color:var(--sky);}
+.step-bar{display:flex;align-items:center;flex-wrap:wrap;gap:4px;margin-bottom:16px;}
+.step-wrap{display:flex;flex-direction:column;align-items:center;}
+.step-dot{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0;border:2px solid var(--border);background:var(--card);color:var(--text3);}
+.step-dot.done{background:var(--green);border-color:var(--green);color:#fff;}
+.step-dot.current{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 0 0 3px rgba(11,31,58,.15);}
+.step-label{font-size:11px;color:var(--text3);margin-top:2px;white-space:nowrap;font-weight:600;}
+.step-line{width:24px;height:2px;background:var(--border);flex-shrink:0;}
+.step-line.done{background:var(--green);}
+.dsec{background:var(--bg);border-radius:12px;padding:18px;margin-bottom:10px;}
+.dsec-title{font-size:12px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.dgrid.three{grid-template-columns:1fr 1fr 1fr;}
+.di{background:var(--card);border-radius:9px;padding:12px 14px;border:1px solid var(--border);}
+.di.full{grid-column:1/-1;}
+.di-l{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px;}
+.di-v{font-size:14px;font-weight:600;color:var(--text);}
+.di-v.mono{font-family:monospace;letter-spacing:1px;color:var(--navy);}
+.net-card{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:14px;margin-bottom:9px;display:flex;align-items:flex-start;gap:13px;cursor:pointer;transition:all .15s;}
+.net-card:hover{border-color:var(--sky);background:#EFF6FF;}
+.net-av{width:42px;height:42px;border-radius:50%;background:var(--blue-bg);color:var(--blue);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;}
+.net-name{font-size:15px;font-weight:700;color:var(--navy);}
+.net-code{font-size:12px;color:var(--text3);font-family:monospace;margin-left:6px;}
+.net-meta{font-size:13px;color:var(--text2);margin-top:2px;}
+.net-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px;}
+.chart-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px;}
+.chart-card{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:18px;}
+.chart-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:14px;}
+.chart-wrap{position:relative;height:200px;}
+.tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.tpl-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:16px;}
+.tpl-card:hover{border-color:var(--sky);}
+.tpl-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:8px;}
+.tpl-title{font-size:13px;font-weight:800;color:var(--navy);flex:1;}
+.tpl-body{font-size:12px;color:var(--text2);line-height:1.8;background:var(--bg);border-radius:8px;padding:10px 12px;white-space:pre-wrap;min-height:100px;max-height:160px;overflow-y:auto;}
+.tpl-actions{display:flex;gap:5px;margin-top:10px;}
+.tpl-copy-btn{font-size:11px;padding:5px 11px;border-radius:7px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;color:var(--text2);font-weight:700;}
+.tpl-copy-btn:hover{border-color:var(--sky);color:var(--sky);}
+.tpl-edit-btn{font-size:11px;padding:5px 11px;border-radius:7px;background:var(--blue-bg);color:var(--blue);border:none;cursor:pointer;font-weight:700;}
+.tpl-del-btn{font-size:11px;padding:5px 11px;border-radius:7px;background:var(--red-bg);color:var(--red);border:none;cursor:pointer;font-weight:700;}
+/* 고객 분석 */
+.analysis-box{background:linear-gradient(135deg,#2C3E50,#3D5166);border-radius:14px;padding:18px;color:#fff;margin-bottom:12px;}
+.analysis-title{font-size:12px;font-weight:800;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;margin-bottom:12px;}
+.analysis-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+.analysis-item{background:rgba(255,255,255,.1);border-radius:10px;padding:12px;}
+.analysis-label{font-size:11px;color:rgba(255,255,255,.6);margin-bottom:4px;}
+.analysis-value{font-size:18px;font-weight:800;color:#fff;}
+.analysis-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px;}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--navy);color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:600;z-index:999;opacity:0;transition:all .22s;pointer-events:none;box-shadow:0 8px 24px rgba(0,0,0,.3);white-space:nowrap;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.empty-state{text-align:center;padding:50px 20px;color:var(--text3);}
+.empty-icon{font-size:36px;margin-bottom:10px;}
+#perfDetail{display:none;margin-top:20px;background:var(--card);border-radius:16px;border:1px solid var(--border);padding:22px;}
+</style>
+</head>
+<body>
+<div id="loginPage">
+  <div class="login-card">
+    <div class="login-logo">
+      <span class="icon" id="loginCrmLogo">✈️</span>
+      <h1 id="loginCrmName">여행사 CRM</h1>
+      <p>직원 전용 · 보안 로그인</p>
+    </div>
+    <div id="staffSelect"><div class="login-divider">직원 선택</div></div>
+    <div id="pwSelect" style="display:none;">
+      <div class="login-divider" id="pwLabel">비밀번호</div>
+      <div class="login-pw">
+        <input type="password" id="pwInput" placeholder="비밀번호 입력" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+        <button class="login-pw-btn" onclick="doLogin()">로그인</button>
+        <div class="login-err" id="loginErr">비밀번호가 틀렸어요</div>
+        <button class="back-btn" onclick="backToStaff()">← 직원 선택으로</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none;flex-direction:column;min-height:100vh;">
+  <div class="alert-banner" id="alertBanner"></div>
+  <div class="topbar">
+    <div class="brand" id="crmBrandName">✈️ 여행사 CRM</div>
+    <div class="nav-tabs">
+      <div class="nav-tab on" onclick="goPage('dashboard')">📊 대시보드</div>
+      <div class="nav-tab" onclick="goPage('consults')">💬 상담</div>
+      <div class="nav-tab" id="tabResv" onclick="goPage('reservations')">🗂 예약</div>
+      <div class="nav-tab" onclick="goPage('customers')">👥 고객관리</div>
+      <div class="nav-tab" onclick="goPage('calendar')">📅 캘린더</div>
+      <div class="nav-tab" onclick="goPage('stats')">📈 통계</div>
+      <div class="nav-tab" onclick="goPage('templates')">💬 문자템플릿</div>
+      <div class="nav-tab" id="perfTab" onclick="goPage('performance')" style="display:none;">🏆 성과</div>
+      <div class="nav-tab" id="adminTab" onclick="goPage('admin')" style="display:none;">⚙️ 설정</div>
+    </div>
+    <div class="topbar-right">
+      <div class="user-info" id="userInfo"></div>
+      <button class="logout-btn" onclick="doLogout()">로그아웃</button>
+    </div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div class="page on" id="page-dashboard">
+    <div class="ph"><h2>대시보드</h2></div>
+    <div class="stats" id="statsRow" style="grid-template-columns:repeat(3,1fr);"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div><div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:9px;">이번달 출발</div><div class="tbl-wrap" id="dashDepart"></div></div>
+      <div><div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:9px;">잔금 미수금</div><div class="tbl-wrap" id="dashBalance"></div></div>
+    </div>
+  </div>
+
+  <!-- 상담 -->
+  <div class="page" id="page-consults">
+    <div class="ph"><h2>상담 관리</h2><button class="btn btn-primary" onclick="openConsultModal()">+ 상담 추가</button></div>
+    <div class="filter-bar">
+      <input type="text" autocomplete="off" id="coSearch" placeholder="고객명·코드·여행지 검색..." oninput="renderConsults()">
+      <select id="coResult" onchange="renderConsults()"><option value="">전체</option><option>상담중</option><option>견적발송</option><option>예약전환</option><option>미진행</option></select>
+      <select id="coStaff" onchange="renderConsults()"><option value="">전체 담당</option></select>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>고객코드</th><th>고객명</th><th>여행지</th><th>인원</th><th>유형</th><th>상담일</th><th>결과</th><th>담당</th><th></th></tr></thead>
+        <tbody id="coBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 예약 -->
+  <div class="page" id="page-reservations">
+    <div class="ph"><h2>예약 관리</h2><button class="btn btn-primary" onclick="openResvModal()">+ 예약 추가</button></div>
+    <div class="view-toggle">
+      <button class="vt-btn on" id="rv-list-btn" onclick="setResvView('list')">목록</button>
+      <button class="vt-btn" id="rv-pipe-btn" onclick="setResvView('pipe')">파이프라인</button>
+    </div>
+    <div id="rv-list">
+      <div class="filter-bar">
+        <input type="text" autocomplete="off" id="rvSearch" placeholder="고객명·코드·여행지 검색..." oninput="renderResvs()">
+        <select id="rvStage" onchange="renderResvs()"><option value="">전체 단계</option><option>예약접수</option><option>잔금요청</option><option>완료</option><option>취소</option></select>
+        <select id="rvStaff" onchange="renderResvs()"><option value="">전체 담당</option></select>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>단계</th><th>코드</th><th>대표자</th><th>여행지</th><th>출발일</th><th>귀국일</th><th>박수</th><th>인원</th><th>결제</th><th>아피스</th><th>담당</th></tr></thead>
+          <tbody id="rvBody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div id="rv-pipe" style="display:none;"><div class="pipeline" id="pipeWrap"></div></div>
+  </div>
+
+  <!-- 고객 -->
+  <div class="page" id="page-customers">
+    <div class="ph"><h2>고객 관리</h2>
+      <div class="ph-actions">
+        <button class="btn btn-secondary" id="importBtn" style="display:none;" onclick="openImportPwModal('import')">📂 가져오기</button>
+        <input type="file" id="excelInput" accept=".xlsx,.xls,.csv" style="display:none;" onchange="importExcel(this)">
+        <button class="btn btn-secondary" id="exportBtn" style="display:none;" onclick="openImportPwModal('export')">📤 내보내기</button>
+        <button class="btn btn-primary" onclick="openCustModal()">+ 고객 추가</button>
+      </div>
+    </div>
+    <div id="importStatus" style="display:none;margin-bottom:12px;padding:10px 14px;border-radius:10px;font-size:13px;font-weight:600;"></div>
+    <div class="filter-bar">
+      <input type="text" autocomplete="off" id="custSearch" placeholder="고객명·코드·연락처·등급 검색..." oninput="renderCustomers()">
+      <select id="custGradeFilter" onchange="renderCustomers()">
+        <option value="">전체 등급</option>
+        <option>⭐ 새고객</option><option>🥈 실버</option><option>🥇 골드</option><option>💎 VIP</option><option>👑 VVIP</option>
+      </select>
+    </div>
+    <div id="custList"></div>
+  </div>
+
+  <!-- 캘린더 -->
+  <div class="page" id="page-calendar">
+    <div class="ph"><h2>출발 캘린더</h2></div>
+    <div class="cal-nav">
+      <button class="cal-nav-btn" onclick="calPrev()">‹</button>
+      <div class="cal-month" id="calMonth"></div>
+      <button class="cal-nav-btn" onclick="calNext()">›</button>
+    </div>
+    <div class="cal-wrap">
+      <div class="cal-head"><div class="cal-wd">일</div><div class="cal-wd">월</div><div class="cal-wd">화</div><div class="cal-wd">수</div><div class="cal-wd">목</div><div class="cal-wd">금</div><div class="cal-wd">토</div></div>
+      <div class="cal-body" id="calBody"></div>
+    </div>
+  </div>
+
+  <!-- 통계 -->
+  <div class="page" id="page-stats">
+    <div class="ph"><h2>📊 통계</h2>
+      <select id="statsYear" onchange="renderStats()" style="padding:8px 14px;border-radius:9px;border:1.5px solid var(--border);font-size:14px;font-weight:600;"></select>
+    </div>
+    <div class="stats" style="grid-template-columns:repeat(4,1fr);margin-bottom:18px;" id="statsCards"></div>
+    <div class="chart-grid">
+      <div class="chart-card"><div class="chart-title">📈 월별 수익 (원)</div><div class="chart-wrap"><canvas id="chartRevenue"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">💬 월별 상담 건수</div><div class="chart-wrap"><canvas id="chartConsults"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- 문자 템플릿 -->
+  <div class="page" id="page-templates">
+    <div class="ph"><h2>💬 문자 / 카카오 템플릿</h2><button class="btn btn-primary" onclick="openTplModal()">+ 템플릿 추가</button></div>
+    <div style="font-size:13px;color:var(--text2);margin-bottom:14px;">예약을 선택하면 고객 정보가 자동으로 채워집니다.</div>
+    <div class="filter-bar" style="margin-bottom:16px;">
+      <select id="tplResvSel" onchange="fillTemplate()" style="max-width:340px;"><option value="">— 예약 선택 (자동 채우기) —</option></select>
+    </div>
+    <div class="tpl-grid" id="tplGrid"></div>
+  </div>
+
+  <!-- 성과 -->
+  <div class="page" id="page-performance">
+    <div class="ph"><h2>🏆 직원별 성과</h2></div>
+    <div id="perfStaffCards" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;"></div>
+    <div id="perfDetail"></div>
+  </div>
+
+  <!-- 관리자 설정 -->
+  <div class="page" id="page-admin">
+    <div class="ph"><h2>⚙️ 관리자 설정</h2></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:860px;">
+      <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:18px;">
+        <div style="font-size:13px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">CRM 기본 설정</div>
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          <div class="fg"><label>CRM 이름</label><input id="admin-crm-name" autocomplete="off" placeholder="여행사 CRM"></div>
+          <div class="fg"><label>로고 이모지</label><input id="admin-crm-logo" autocomplete="off" placeholder="✈️" maxlength="2" style="font-size:20px;width:80px;"></div>
+          <button class="btn btn-primary" style="align-self:flex-start;margin-top:4px;" onclick="saveCrmSettings()">저장</button>
+        </div>
+      </div>
+      <div style="background:var(--card);border-radius:14px;border:1px solid var(--border);padding:18px;">
+        <div style="font-size:13px;font-weight:800;color:var(--sky);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px;">고객 등급 기준</div>
+        <div style="font-size:13px;color:var(--text2);display:flex;flex-direction:column;gap:6px;line-height:1.8;">
+          <div>⭐ <b>새고객</b> — 예약 0건</div>
+          <div>🥈 <b>실버</b> — 예약 1건</div>
+          <div>🥇 <b>골드</b> — 예약 2~3건</div>
+          <div>💎 <b>VIP</b> — 예약 4~6건</div>
+          <div>👑 <b>VVIP</b> — 예약 7건 이상</div>
+          <div style="font-size:12px;color:var(--text3);margin-top:4px;">직접 등급 지정 시 자동 계산 무시</div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:16px;max-width:860px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:15px;font-weight:800;color:var(--navy);">직원 관리</div>
+        <button class="btn btn-primary" onclick="openStaffModal()">+ 직원 추가</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>이름</th><th>직책</th><th>권한</th><th>관리자</th><th>비밀번호</th><th></th></tr></thead>
+          <tbody id="adminStaffBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 상담 모달 -->
+<div class="overlay" id="coOverlay">
+<div class="modal" style="max-width:700px;">
+  <div class="modal-head"><h2 id="coModalTitle">상담 추가</h2><button class="modal-close" onclick="closeCoModal()">×</button></div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="fg"><label>고객명 *</label><input id="co-name" autocomplete="off" placeholder="홍길동"></div>
+      <div class="fg"><label>연락처</label><input id="co-phone" autocomplete="off" placeholder="010-0000-0000" oninput="fmtPhone(this)" maxlength="13"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>고객코드 (자동)</label><div class="code-display" id="co-code-display">—</div></div>
+      <div class="fg"><label>담당직원</label><input id="co-staff" readonly style="background:#f0f7ff;font-weight:700;"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>상담일</label><input id="co-date" autocomplete="off" placeholder="2025-01-01" oninput="fmtDate(this)" maxlength="10"></div>
+      <div class="fg"><label>상담유형</label><select id="co-type"><option>문자</option><option>카카오</option><option>카카오채널</option><option>전화</option></select></div>
+    </div>
+    <div class="fsec">여행 정보</div>
+    <div class="form-row one"><div class="fg"><label>여행지</label><input id="co-dest" autocomplete="off" placeholder="일본 도쿄"></div></div>
+    <div class="form-row three">
+      <div class="fg"><label>출발일</label><input id="co-depart" autocomplete="off" placeholder="2025-01-01" oninput="fmtDate(this)" maxlength="10"></div>
+      <div class="fg"><label>귀국일</label><input id="co-return" autocomplete="off" placeholder="2025-01-07" oninput="fmtDate(this)" maxlength="10"></div>
+      <div class="fg"><label>박수 (자동)</label><input id="co-nights" readonly></div>
+    </div>
+    <div class="form-row one"><div class="fg"><label>희망 인원</label><input id="co-count" type="number" autocomplete="off" placeholder="예: 4" min="1"></div></div>
+    <div class="form-row one"><div class="fg"><label>상담 내용</label><textarea id="co-content" placeholder="고객 요청사항, 문의 내용을 입력하세요"></textarea></div></div>
+    <div class="fg"><label>상담 결과</label><select id="co-result"><option>상담중</option><option>견적발송</option><option>예약전환</option><option>미진행</option></select></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" id="deleteCoBtn" onclick="deleteConsult()" style="display:none;">삭제</button>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeCoModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveConsult()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 예약 모달 -->
+<div class="overlay" id="rvOverlay">
+<div class="modal" style="max-width:780px;">
+  <div class="modal-head"><h2 id="rvModalTitle">예약 추가</h2><button class="modal-close" onclick="closeRvModal()">×</button></div>
+  <div class="modal-body">
+    <div id="stepBarWrap"></div>
+    <div class="fsec">기본 정보</div>
+    <div class="form-row">
+      <div class="fg"><label>대표자 고객명 *</label><input id="rv-leader" autocomplete="off" placeholder="홍길동" oninput="autoLinkCustRv()"></div>
+      <div class="fg"><label>연락처</label><input id="rv-phone" autocomplete="off" placeholder="010-0000-0000" oninput="fmtPhone(this)" maxlength="13"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>고객코드 (자동)</label><div class="code-display" id="rv-code-display">—</div></div>
+      <div class="fg"><label>담당직원</label><input id="rv-staff" readonly style="background:#f0f7ff;font-weight:700;"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>예약 단계</label><select id="rv-stage" onchange="updateStepBar()"><option>예약접수</option><option>잔금요청</option><option>완료</option><option>취소</option></select></div>
+      <div class="fg"><label>결제상태</label><select id="rv-pay"><option>미결제</option><option>계약금완료</option><option>완납</option></select></div>
+    </div>
+    <div class="fsec">여행 정보</div>
+    <div class="form-row one"><div class="fg"><label>여행지 *</label><input id="rv-dest" autocomplete="off" placeholder="일본 도쿄"></div></div>
+    <div class="form-row three">
+      <div class="fg"><label>출발일</label><input id="rv-depart" autocomplete="off" placeholder="2025-01-01" oninput="fmtDate(this)" maxlength="10"></div>
+      <div class="fg"><label>귀국일</label><input id="rv-return" autocomplete="off" placeholder="2025-01-07" oninput="fmtDate(this)" maxlength="10"></div>
+      <div class="fg"><label>박수 (자동)</label><input id="rv-nights" readonly></div>
+    </div>
+    <div class="form-row one"><div class="fg"><label>여행인원</label><input id="rv-count" type="number" autocomplete="off" placeholder="4" min="1" oninput="updateAapisRows()"></div></div>
+    <div class="form-row one"><div class="fg"><label>특이사항 / 메모</label><textarea id="rv-note"></textarea></div></div>
+    <div class="fsec">항공 정보</div>
+    <div class="form-row three">
+      <div class="fg"><label>항공사</label><input id="rv-airline" autocomplete="off" placeholder="대한항공"></div>
+      <div class="fg"><label>GDS PNR</label><input id="rv-pnr" autocomplete="off" placeholder="ABC123" style="font-family:monospace;letter-spacing:1px;"></div>
+      <div class="fg"><label>항공사 PNR</label><input id="rv-pnr2" autocomplete="off" placeholder="X12345" style="font-family:monospace;letter-spacing:1px;"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>✈️ 안내 항공료 (고객에게 안내한 금액)</label><input id="rv-air-quoted" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+      <div class="fg"><label>✈️ 실제 항공료 (실제 매입 금액)</label><input id="rv-air-actual" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+    </div>
+    <div class="fsec">아피스 — 여행객 개인별 입력</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:7px;">생년월일·만료일은 숫자로 입력 (예: 19901225)</div>
+    <table class="aapis-table"><thead><tr><th style="width:28px;">#</th><th>이름</th><th>생년월일</th><th>여권번호</th><th>여권만료일</th></tr></thead><tbody id="aapisBody"></tbody></table>
+    <button class="aapis-add-btn" onclick="addAapisRow()">+ 여행객 추가</button>
+    <div class="fsec">비용 / 수익</div>
+    <div class="form-row three">
+      <div class="fg"><label>상품금액 (원)</label><input id="rv-price" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+      <div class="fg"><label>지상비 (원)</label><input id="rv-land" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+      <div class="fg"><label>항공비 (자동 = 실제 항공료)</label><input id="rv-air" type="number" readonly></div>
+    </div>
+    <div class="form-row three">
+      <div class="fg"><label>보험료 (원)</label><input id="rv-ins" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+      <div class="fg"><label>기타비용 (원)</label><input id="rv-etc" type="number" autocomplete="off" placeholder="0" oninput="calcProfit()"></div>
+      <div class="fg"><label>예상 수익 (자동)</label><input id="rv-profit" readonly></div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" id="deleteRvBtn" onclick="deleteResv()" style="display:none;">삭제</button>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeRvModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveResv()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 고객 모달 -->
+<div class="overlay" id="custOverlay">
+<div class="modal" style="max-width:460px;">
+  <div class="modal-head"><h2 id="custModalTitle">고객 추가</h2><button class="modal-close" onclick="closeCustModal()">×</button></div>
+  <div class="modal-body">
+    <div class="form-row">
+      <div class="fg"><label>성 *</label><input id="c-last" autocomplete="off" placeholder="홍" maxlength="5" oninput="combineName()"></div>
+      <div class="fg"><label>이름 *</label><input id="c-first" autocomplete="off" placeholder="길동" oninput="combineName()"></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>연락처</label><input id="c-phone" autocomplete="off" placeholder="010-0000-0000" oninput="fmtPhone(this)" maxlength="13"></div>
+      <div class="fg"><label>이메일</label><input id="c-email" autocomplete="off" type="email"></div>
+    </div>
+    <input type="hidden" id="c-name">
+    <div class="form-row">
+      <div class="fg"><label>고객코드 (자동)</label><div class="code-display" id="cust-code-display">저장 시 자동 생성</div></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>생년월일 (숫자)</label><input id="c-birth" autocomplete="off" placeholder="19901225" maxlength="8"></div>
+      <div class="fg"><label>성별</label><select id="c-gender"><option value="">선택</option><option>남성</option><option>여성</option></select></div>
+    </div>
+    <div class="form-row">
+      <div class="fg"><label>유입경로</label><select id="c-source"><option value="">선택</option><option>네이버</option><option>인스타그램</option><option>유튜브</option><option>카카오채널</option><option>지인소개</option></select></div>
+      <div class="fg"><label>등급 (직접 지정)</label>
+        <select id="c-grade">
+          <option value="">자동 (예약 횟수)</option>
+          <option>⭐ 새고객</option><option>🥈 실버</option><option>🥇 골드</option><option>💎 VIP</option><option>👑 VVIP</option>
+        </select>
+      </div>
+    </div>
+    <div class="fg"><label>메모</label><textarea id="c-memo" style="min-height:56px;"></textarea></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" id="deleteCustBtn" onclick="deleteCust()" style="display:none;">삭제</button>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeCustModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveCust()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 상담 상세 -->
+<div class="overlay" id="coDetailOverlay">
+<div class="modal" style="max-width:560px;">
+  <div class="modal-head">
+    <h2 id="coDetailTitle"></h2>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <button class="btn btn-accent" onclick="convertToResv()">✈️ 예약하기</button>
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="editConsult()">수정</button>
+      <button class="modal-close" onclick="closeCoDetail()">×</button>
+    </div>
+  </div>
+  <div class="modal-body" id="coDetailBody"></div>
+</div>
+</div>
+
+<!-- 예약 상세 -->
+<div class="overlay" id="rvDetailOverlay">
+<div class="modal" style="max-width:700px;">
+  <div class="modal-head">
+    <h2 id="rvDetailTitle"></h2>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <button class="btn btn-secondary" id="rvEditBtn" style="padding:5px 12px;font-size:12px;" onclick="editResv()">수정</button>
+      <button class="modal-close" onclick="closeRvDetail()">×</button>
+    </div>
+  </div>
+  <div class="modal-body" id="rvDetailBody"></div>
+</div>
+</div>
+
+<!-- 고객 상세 -->
+<div class="overlay" id="custDetailOverlay">
+<div class="modal" style="max-width:680px;">
+  <div class="modal-head">
+    <h2 id="custDetailTitle"></h2>
+    <div style="display:flex;gap:7px;align-items:center;">
+      <button class="btn btn-primary" style="padding:5px 12px;font-size:12px;" onclick="openConsultFromCust()">+ 상담 추가</button>
+      <button class="btn btn-secondary" style="padding:5px 12px;font-size:12px;" onclick="editCustFromDetail()">수정</button>
+      <button class="modal-close" onclick="closeCustDetail()">×</button>
+    </div>
+  </div>
+  <div class="modal-body" id="custDetailBody"></div>
+</div>
+</div>
+
+<!-- 직원 모달 -->
+<div class="overlay" id="staffOverlay">
+<div class="modal" style="max-width:460px;">
+  <div class="modal-head"><h2 id="staffModalTitle">직원 추가</h2><button class="modal-close" onclick="closeStaffModal()">×</button></div>
+  <div class="modal-body">
+    <div class="form-row one"><div class="fg"><label>이름 *</label><input id="sm-name" autocomplete="off" placeholder="홍길동"></div></div>
+    <div class="form-row one"><div class="fg"><label>직책</label><input id="sm-role" autocomplete="off" placeholder="상담사, 팀장 등"></div></div>
+    <div class="form-row one"><div class="fg"><label>비밀번호</label><input id="sm-pw" type="password" autocomplete="off"></div></div>
+    <div class="form-row">
+      <div class="fg"><label>관리자</label><select id="sm-admin"><option value="false">일반 직원</option><option value="true">관리자</option></select></div>
+      <div class="fg"><label>권한</label><select id="sm-perm"><option value="all">🔵 전체</option><option value="flight">✈️ 항공만</option><option value="consult">💬 상담만</option></select></div>
+    </div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" id="deleteStaffBtn" onclick="deleteStaff()" style="display:none;">삭제</button>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeStaffModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveStaff()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 가져오기/내보내기 비밀번호 모달 -->
+<div class="overlay" id="importPwOverlay">
+<div class="modal" style="max-width:380px;">
+  <div class="modal-head"><h2 id="importPwTitle">🔐 관리자 확인</h2><button class="modal-close" onclick="closeImportPwModal()">×</button></div>
+  <div class="modal-body">
+    <div id="importPwDesc" style="font-size:13px;color:var(--text2);margin-bottom:4px;"></div>
+    <div class="fg"><label>관리자 비밀번호</label><input type="password" id="importPwInput" autocomplete="off" placeholder="비밀번호 입력" onkeydown="if(event.key==='Enter')confirmImportPw()"></div>
+    <div class="login-err" id="importPwErr" style="display:none;text-align:left;margin-top:2px;">비밀번호가 틀렸어요</div>
+  </div>
+  <div class="modal-foot">
+    <div></div>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeImportPwModal()">취소</button>
+      <button class="btn btn-primary" onclick="confirmImportPw()">확인</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- 템플릿 모달 -->
+<div class="overlay" id="tplOverlay">
+<div class="modal" style="max-width:540px;">
+  <div class="modal-head"><h2 id="tplModalTitle">템플릿 추가</h2><button class="modal-close" onclick="closeTplModal()">×</button></div>
+  <div class="modal-body">
+    <div class="form-row one"><div class="fg"><label>제목 *</label><input id="tpl-title-input" autocomplete="off" placeholder="예: 예약 확인 문자"></div></div>
+    <div class="form-row one"><div class="fg"><label>이모지 아이콘</label><input id="tpl-icon-input" autocomplete="off" placeholder="✅" maxlength="2" style="width:70px;font-size:18px;"></div></div>
+    <div class="form-row one"><div class="fg"><label>내용 * <span style="font-size:11px;color:var(--sky);font-weight:400;">{{고객명}} {{여행사}} {{여행지}} {{출발일}} {{귀국일}} {{인원}} {{담당자}} {{항공사}}</span></label>
+    <textarea id="tpl-body-input" style="min-height:200px;" placeholder="안녕하세요, {{고객명}} 고객님!"></textarea></div></div>
+  </div>
+  <div class="modal-foot">
+    <button class="btn btn-danger" id="deleteTplBtn" onclick="deleteTpl()" style="display:none;">삭제</button>
+    <div class="modal-foot-right">
+      <button class="btn btn-secondary" onclick="closeTplModal()">취소</button>
+      <button class="btn btn-primary" onclick="saveTpl()">저장</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── SETTINGS ──
+const DEFAULT_SETTINGS={crmName:'여행사 CRM',crmLogo:'✈️',staff:[{name:'김민준',role:'팀장',pw:'1234',isAdmin:true,perm:'all'},{name:'이수연',role:'상담사',pw:'1234',isAdmin:false,perm:'all'},{name:'박지훈',role:'상담사',pw:'1234',isAdmin:false,perm:'all'}]};
+function getSettings(){const s=localStorage.getItem('crm_settings');return s?JSON.parse(s):JSON.parse(JSON.stringify(DEFAULT_SETTINGS));}
+function saveSettings(s){localStorage.setItem('crm_settings',JSON.stringify(s));}
+function getStaffList(){return getSettings().staff;}
+function getStaffNames(){return getStaffList().map(s=>s.name);}
+function getCrmName(){return getSettings().crmName||'여행사 CRM';}
+function getCrmLogo(){return getSettings().crmLogo||'✈️';}
+
+// 등급
+const GRADES=[{key:'👑 VVIP',min:7,cls:'grade-vvip'},{key:'💎 VIP',min:4,cls:'grade-vip'},{key:'🥇 골드',min:2,cls:'grade-gold'},{key:'🥈 실버',min:1,cls:'grade-silver'},{key:'⭐ 새고객',min:0,cls:'grade-new'}];
+function getAutoGrade(code){const cnt=resvs.filter(r=>r.code===code&&r.stage!=='취소').length;return GRADES.find(g=>cnt>=g.min)||GRADES[4];}
+function getCustGrade(c){if(c.grade)return GRADES.find(g=>g.key===c.grade)||getAutoGrade(c.code);return getAutoGrade(c.code);}
+function gradeBadge(c){const g=getCustGrade(c);return`<span class="badge ${g.cls}">${g.key}</span>`;}
+
+const DEFAULT_TEMPLATES=[
+  {id:'t1',icon:'✅',title:'예약 확인 문자',body:`안녕하세요, {{고객명}} 고객님!\n{{여행사}} 입니다.\n\n{{여행지}} 여행 예약이 완료되었습니다.\n\n▶ 출발일: {{출발일}}\n▶ 귀국일: {{귀국일}}\n▶ 인원: {{인원}}명\n▶ 담당자: {{담당자}}\n\n궁금하신 점은 언제든지 연락 주세요. 😊`},
+  {id:'t2',icon:'💳',title:'잔금 요청 안내',body:`안녕하세요, {{고객명}} 고객님.\n{{여행사}} 입니다.\n\n{{여행지}} 여행 잔금 납부 안내드립니다.\n\n▶ 출발일: {{출발일}}\n▶ 잔금 납부 기한: 출발 21일 전까지\n\n빠른 납부 부탁드립니다. 감사합니다! 🙏`},
+  {id:'t3',icon:'✈️',title:'출발 안내 (D-3)',body:`안녕하세요, {{고객명}} 고객님!\n{{여행사}} 입니다.\n\n{{여행지}} 출발이 3일 앞으로 다가왔습니다 🎉\n\n▶ 출발일: {{출발일}}\n▶ 항공사: {{항공사}}\n\n여권·여행서류를 꼭 챙겨주세요. 즐거운 여행 되세요! ✈️`},
+  {id:'t4',icon:'🏠',title:'귀국 후 감사 문자',body:`안녕하세요, {{고객명}} 고객님!\n{{여행사}} 입니다.\n\n{{여행지}} 여행은 즐거우셨나요? 😊\n\n소중한 추억 가득 안고 건강하게 귀국하셨길 바랍니다.\n다음 여행도 함께해요! 💕`},
+  {id:'t5',icon:'📋',title:'견적 발송 안내',body:`안녕하세요, {{고객명}} 고객님!\n{{여행사}} 입니다.\n\n요청하신 {{여행지}} 여행 견적을 안내드립니다.\n\n▶ 출발일: {{출발일}}\n▶ 귀국일: {{귀국일}}\n▶ 인원: {{인원}}명\n\n자세한 내용은 첨부 파일을 확인해주세요. 😊`},
+  {id:'t6',icon:'📅',title:'여행 준비 안내',body:`안녕하세요, {{고객명}} 고객님!\n{{여행사}} 입니다.\n\n{{여행지}} 여행 출발 1주일 전입니다!\n\n✅ 여권 유효기간 확인\n✅ 여행자 보험 확인\n✅ 현지 화폐 환전\n✅ 짐 패킹\n\n즐거운 여행 준비 되세요! 🧳`}
+];
+function getTemplates(){const t=localStorage.getItem('crm_templates');return t?JSON.parse(t):JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));}
+function saveTplData(arr){localStorage.setItem('crm_templates',JSON.stringify(arr));}
+
+const RESV_STAGES=['예약접수','잔금요청','완료','취소'];
+const RESV_C={'예약접수':'b-blue','잔금요청':'b-orange','완료':'b-green','취소':'b-gray'};
+const CO_C={'상담중':'b-blue','견적발송':'b-yellow','예약전환':'b-green','미진행':'b-gray'};
+const PAY_C={'미결제':'b-red','계약금완료':'b-yellow','완납':'b-green'};
+const TODAY=new Date().toISOString().split('T')[0];
+const MONTHS=['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
+
+let user=null,selStaff=null;
+let consults=JSON.parse(localStorage.getItem('crm_consults')||'[]');
+let resvs=JSON.parse(localStorage.getItem('crm_resvs')||'[]');
+let custs=JSON.parse(localStorage.getItem('crm_custs')||'[]');
+let editCoId=null,editRvId=null,editCustId=null,editStaffIdx=null,editingTplId=null;
+let aapisRows=[];
+let calY=new Date().getFullYear(),calM=new Date().getMonth();
+let chartObjs={};
+let _custDetailId=null; // 고객 상세에서 상담 추가 시 사용
+
+function saveData(){
+  consults.forEach(c=>window.fbSave&&fbSave('consults',c.id,c));
+  resvs.forEach(r=>window.fbSave&&fbSave('resvs',r.id,r));
+  custs.forEach(c=>window.fbSave&&fbSave('custs',c.id,c));
+  localStorage.setItem('crm_consults',JSON.stringify(consults));
+  localStorage.setItem('crm_resvs',JSON.stringify(resvs));
+  localStorage.setItem('crm_custs',JSON.stringify(custs));
+}
+function removeDoc(col,id){window.fbDelete&&fbDelete(col,id);}
+function genCode(){return 'CX'+Date.now().toString(36).toUpperCase().slice(-5);}
+function genTplId(){return 't'+Date.now();}
+function fmtPhone(el){let v=el.value.replace(/\D/g,'');if(v.length<=3)el.value=v;else if(v.length<=7)el.value=v.slice(0,3)+'-'+v.slice(3);else el.value=v.slice(0,3)+'-'+v.slice(3,7)+'-'+v.slice(7,11);}
+function fmtDate(el){let v=el.value.replace(/\D/g,'');if(v.length<=4)el.value=v;else if(v.length<=6)el.value=v.slice(0,4)+'-'+v.slice(4);else el.value=v.slice(0,4)+'-'+v.slice(4,6)+'-'+v.slice(6,8);if(el.id==='rv-depart'||el.id==='rv-return')calcNights();if(el.id==='co-depart'||el.id==='co-return')calcCoNights();}
+function splitName(full){if(!full)return{last:'',first:''};return{last:full.slice(0,1),first:full.slice(1)};}
+function combineName(){const l=(document.getElementById('c-last')?.value||'').trim(),f=(document.getElementById('c-first')?.value||'').trim();const n=document.getElementById('c-name');if(n)n.value=l+f;}
+function staffFilter(item){return user.isAdmin||item.staff===user.name;}
+
+function getUrgentResvs(){const soon=new Date();soon.setDate(soon.getDate()+7);const ss=soon.toISOString().split('T')[0];return resvs.filter(r=>r.stage!=='취소'&&r.stage!=='완료'&&r.depart&&r.depart>=TODAY&&r.depart<=ss&&staffFilter(r));}
+function renderAlertBanner(){
+  const urgent=getUrgentResvs();const banner=document.getElementById('alertBanner');const tab=document.getElementById('tabResv');
+  if(!urgent.length){banner.classList.remove('on');const b=tab.querySelector('.nav-badge');if(b)b.remove();return;}
+  banner.classList.add('on');
+  banner.innerHTML=`<span style="font-weight:800;margin-right:6px;">🔴 출발 임박 ${urgent.length}건</span>`+urgent.map(r=>`<span class="alert-item" onclick="closeAlertAndOpen('${r.id}')">✈️ ${r.leader} · ${r.dest||''} · ${r.depart}</span>`).join('');
+  let badge=tab.querySelector('.nav-badge');if(!badge){badge=document.createElement('span');badge.className='nav-badge';tab.appendChild(badge);}badge.textContent=urgent.length;
+}
+function closeAlertAndOpen(id){goPage('reservations');setTimeout(()=>openRvDetail(id),100);}
+
+// Firebase 실시간 동기화
+async function initFirebase(){
+  if(!window.fbListen)return;
+  fbListen('consults',data=>{consults=data.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));if(user){renderConsults();renderDashboard();}});
+  fbListen('resvs',data=>{resvs=data.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));if(user){renderResvs();renderDashboard();renderAlertBanner();}});
+  fbListen('custs',data=>{custs=data.sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));if(user)renderCustomers();});
+}
+if(window.fbReady)initFirebase();else window.addEventListener('fbReady',initFirebase);
+
+// ── LOGIN ──
+function renderLoginStaff(){
+  const staffList=getStaffList();const avC=['av1','av2','av3','av1','av2'];
+  const wrap=document.getElementById('staffSelect');wrap.querySelectorAll('.staff-btn').forEach(b=>b.remove());
+  staffList.forEach((s,i)=>{const av=avC[i%5];const btn=document.createElement('button');btn.className='staff-btn';btn.onclick=()=>selectStaff(s.name,s.role,av,s.isAdmin);btn.innerHTML=`<div class="av ${av}">${s.name.slice(1)}</div><div><div class="sname">${s.name}${s.isAdmin?'<span class="admin-tag">관리자</span>':''}</div><div class="srole">${s.role}</div></div>`;wrap.appendChild(btn);});
+  document.getElementById('loginCrmName').textContent=getCrmName();document.getElementById('loginCrmLogo').textContent=getCrmLogo();
+}
+function selectStaff(n,r,a,isAdmin){const found=getStaffList().find(s=>s.name===n);if(!found)return;selStaff={name:found.name,role:found.role,av:a,isAdmin:found.isAdmin};document.getElementById('staffSelect').style.display='none';document.getElementById('pwSelect').style.display='block';document.getElementById('pwLabel').textContent=n+' · 비밀번호 입력';document.getElementById('pwInput').value='';document.getElementById('loginErr').style.display='none';setTimeout(()=>document.getElementById('pwInput').focus(),80);}
+function backToStaff(){document.getElementById('staffSelect').style.display='block';document.getElementById('pwSelect').style.display='none';}
+function doLogin(){
+  const found=getStaffList().find(s=>s.name===selStaff.name&&s.pw===document.getElementById('pwInput').value);
+  if(found){
+    user={...found,av:selStaff.av};
+    document.getElementById('loginPage').style.display='none';document.getElementById('app').style.display='flex';
+    document.getElementById('userInfo').textContent=user.name+(user.isAdmin?' 👑':'')+' · '+user.role;
+    document.getElementById('adminTab').style.display=user.isAdmin?'flex':'none';
+    document.getElementById('perfTab').style.display=user.isAdmin?'flex':'none';
+    document.getElementById('importBtn').style.display=user.isAdmin?'inline-flex':'none';
+    document.getElementById('exportBtn').style.display=user.isAdmin?'inline-flex':'none';
+    document.getElementById('crmBrandName').textContent=getCrmLogo()+' '+getCrmName();
+    document.title=getCrmName();
+    document.getElementById('co-staff').value=user.name;document.getElementById('rv-staff').value=user.name;
+    const names=getStaffNames();
+    ['coStaff','rvStaff'].forEach(id=>{const el=document.getElementById(id);if(user.isAdmin){el.innerHTML='<option value="">전체 담당</option>'+names.map(s=>`<option>${s}</option>`).join('');el.disabled=false;}else{el.innerHTML=`<option value="${user.name}">${user.name}</option>`;el.disabled=true;}});
+    renderAll();renderAlertBanner();
+  } else {document.getElementById('loginErr').style.display='block';document.getElementById('pwInput').value='';}
+}
+function doLogout(){user=null;document.getElementById('loginPage').style.display='flex';document.getElementById('app').style.display='none';document.getElementById('staffSelect').style.display='block';document.getElementById('pwSelect').style.display='none';}
+
+function goPage(p){
+  const pages=['dashboard','consults','reservations','customers','calendar','stats','templates','performance','admin'];
+  document.querySelectorAll('.nav-tab').forEach((t,i)=>t.classList.toggle('on',pages[i]===p));
+  document.querySelectorAll('.page').forEach(pg=>pg.classList.remove('on'));
+  document.getElementById('page-'+p).classList.add('on');
+  const fn={dashboard:renderDashboard,consults:renderConsults,reservations:renderResvs,customers:renderCustomers,calendar:renderCalendar,stats:renderStats,templates:renderTemplates,performance:renderPerformance,admin:renderAdmin};
+  if(fn[p])fn[p]();
+}
+
+// ── DASHBOARD ──
+function renderDashboard(){
+  const thisM=TODAY.slice(0,7);
+  const thisMCons=consults.filter(c=>staffFilter(c)&&(c.date||'').startsWith(thisM));
+  const thisMResvs=resvs.filter(r=>staffFilter(r)&&(r.createdAt||'').startsWith(thisM)&&r.stage!=='취소');
+  const totalProfit=resvs.filter(r=>staffFilter(r)&&r.stage!=='취소').reduce((s,r)=>s+(Number(r.profit)||0),0);
+  document.getElementById('statsRow').innerHTML=`
+    <div class="stat-card"><div class="stat-label">이번달 상담</div><div class="stat-value">${thisMCons.length}</div><div class="stat-sub">건</div></div>
+    <div class="stat-card"><div class="stat-label">이번달 예약</div><div class="stat-value">${thisMResvs.length}</div><div class="stat-sub">건</div></div>
+    <div class="stat-card"><div class="stat-label">누적 수익</div><div class="stat-value">${totalProfit.toLocaleString()}</div><div class="stat-sub">원</div></div>`;
+  const dep=resvs.filter(r=>staffFilter(r)&&(r.depart||'').startsWith(thisM)&&r.stage!=='취소');
+  const urgentIds=new Set(getUrgentResvs().map(r=>r.id));
+  const dr=dep.slice(0,10).map(r=>`<tr onclick="openRvDetail('${r.id}')"><td class="td-name">${r.leader}${urgentIds.has(r.id)?`<span class="urgent-badge">D-${Math.ceil((new Date(r.depart)-new Date(TODAY))/86400000)}</span>`:''}</td><td>${r.dest||'-'}</td><td>${r.depart||'-'}</td><td><span class="badge ${RESV_C[r.stage]}">${r.stage}</span></td></tr>`).join('');
+  document.getElementById('dashDepart').innerHTML=`<table><thead><tr><th>고객</th><th>여행지</th><th>출발일</th><th>단계</th></tr></thead><tbody>${dr||'<tr><td colspan="4"><div class="empty-state"><p>이번달 출발 없음</p></div></td></tr>'}</tbody></table>`;
+  const twoW=new Date();twoW.setDate(twoW.getDate()+14);const twoWStr=twoW.toISOString().split('T')[0];
+  const unpaid=resvs.filter(r=>staffFilter(r)&&r.balance>0&&r.stage!=='취소'&&r.stage!=='완료'&&r.depart&&r.depart<=twoWStr);
+  const br=unpaid.slice(0,10).map(r=>`<tr onclick="openRvDetail('${r.id}')"><td class="td-name">${r.leader}</td><td>${r.dest||'-'}</td><td>${r.depart||'-'}</td><td style="color:var(--red);font-weight:700;">${Number(r.balance||0).toLocaleString()}원</td></tr>`).join('');
+  document.getElementById('dashBalance').innerHTML=`<table><thead><tr><th>고객</th><th>여행지</th><th>출발일</th><th>잔금</th></tr></thead><tbody>${br||'<tr><td colspan="4"><div class="empty-state"><p>잔금 요청 건 없음 🎉</p></div></td></tr>'}</tbody></table>`;
+}
+
+// ── CONSULTS ──
+function getFilteredConsults(){
+  const q=(document.getElementById('coSearch')?.value||'').toLowerCase();
+  const rs=document.getElementById('coResult')?.value||'';
+  const sf=user.isAdmin?(document.getElementById('coStaff')?.value||''):user.name;
+  return consults.filter(c=>(!q||(c.name||'').toLowerCase().includes(q)||(c.dest||'').toLowerCase().includes(q)||(c.code||'').toLowerCase().includes(q))&&(!rs||c.result===rs)&&(!sf||c.staff===sf));
+}
+function renderConsults(){
+  const list=getFilteredConsults();const body=document.getElementById('coBody');
+  if(!list.length){body.innerHTML=`<tr><td colspan="9"><div class="empty-state"><div class="empty-icon">💬</div><p>상담 내역이 없어요</p></div></td></tr>`;return;}
+  body.innerHTML=list.map(c=>`<tr>
+    <td class="td-code">${c.code||'-'}</td>
+    <td class="td-name" onclick="openCoDetail('${c.id}')">${c.name||'-'}</td>
+    <td onclick="openCoDetail('${c.id}')">${c.dest||'-'}</td>
+    <td onclick="openCoDetail('${c.id}')">${c.count?c.count+'명':'-'}</td>
+    <td onclick="openCoDetail('${c.id}')">${c.type||'-'}</td>
+    <td onclick="openCoDetail('${c.id}')">${c.date||'-'}</td>
+    <td onclick="openCoDetail('${c.id}')"><span class="badge ${CO_C[c.result]||'b-gray'}">${c.result||'-'}</span></td>
+    <td onclick="openCoDetail('${c.id}')">${c.staff||'-'}</td>
+    <td><button class="btn btn-accent" onclick="convertToResvFrom('${c.id}')">✈️ 예약</button></td>
+  </tr>`).join('');
+}
+function openConsultModal(id=null, prefillCust=null){
+  editCoId=id;
+  document.getElementById('coModalTitle').textContent=id?'상담 수정':'상담 추가';
+  document.getElementById('deleteCoBtn').style.display=id?'inline-flex':'none'; // 모든 직원 삭제 가능
+  if(id){
+    const c=consults.find(x=>x.id===id);if(!c)return;
+    document.getElementById('co-name').value=c.name||'';document.getElementById('co-phone').value=c.phone||'';
+    document.getElementById('co-code-display').textContent=c.code||'—';document.getElementById('co-date').value=c.date||'';
+    document.getElementById('co-nights').value=c.nights||'';document.getElementById('co-type').value=c.type||'문자';
+    document.getElementById('co-dest').value=c.dest||'';document.getElementById('co-count').value=c.count||'';
+    document.getElementById('co-depart').value=c.depart||'';document.getElementById('co-return').value=c.returnDate||'';
+    document.getElementById('co-staff').value=c.staff||user.name;document.getElementById('co-content').value=c.content||'';
+    document.getElementById('co-result').value=c.result||'상담중';
+  } else {
+    ['co-name','co-phone','co-dest','co-content'].forEach(x=>document.getElementById(x).value='');
+    document.getElementById('co-count').value='';document.getElementById('co-date').value=TODAY;
+    document.getElementById('co-depart').value='';document.getElementById('co-return').value='';document.getElementById('co-nights').value='';
+    document.getElementById('co-type').value='문자';document.getElementById('co-result').value='상담중';
+    document.getElementById('co-staff').value=user.name;document.getElementById('co-code-display').textContent='저장 시 자동 생성';
+    // 고객 상세에서 호출 시 자동 채우기
+    if(prefillCust){
+      document.getElementById('co-name').value=prefillCust.name||'';
+      document.getElementById('co-phone').value=prefillCust.phone||'';
+      document.getElementById('co-code-display').textContent=prefillCust.code||'—';
+    }
+  }
+  document.getElementById('coOverlay').classList.add('on');
+}
+function closeCoModal(){document.getElementById('coOverlay').classList.remove('on');}
+function calcCoNights(){const d=document.getElementById('co-depart').value,r=document.getElementById('co-return').value;if(d&&r){const diff=Math.round((new Date(r)-new Date(d))/86400000);document.getElementById('co-nights').value=diff>0?diff+'박':'날짜 확인';}else document.getElementById('co-nights').value='';}
+function saveConsult(){
+  const name=document.getElementById('co-name').value.trim();if(!name){showToast('고객명을 입력하세요');return;}
+  const phone=document.getElementById('co-phone').value;const code=autoGetOrCreateCode(name,phone);
+  const data={id:editCoId||'co'+Date.now(),code,name,phone,date:document.getElementById('co-date').value,type:document.getElementById('co-type').value,dest:document.getElementById('co-dest').value,count:document.getElementById('co-count').value,depart:document.getElementById('co-depart').value,returnDate:document.getElementById('co-return').value,nights:document.getElementById('co-nights').value,staff:document.getElementById('co-staff').value,content:document.getElementById('co-content').value,result:document.getElementById('co-result').value,createdAt:TODAY};
+  if(editCoId){const i=consults.findIndex(c=>c.id===editCoId);if(i>=0)consults[i]=data;}else consults.unshift(data);
+  saveData();closeCoModal();renderConsults();renderDashboard();showToast(editCoId?'수정됐어요!':'상담이 추가됐어요!');
+}
+function deleteConsult(){
+  if(!confirm('삭제할까요?'))return;
+  removeDoc('consults',editCoId);consults=consults.filter(c=>c.id!==editCoId);editCoId=null;
+  saveData();closeCoModal();renderAll();showToast('삭제됐어요');
+}
+function openCoDetail(id){
+  const c=consults.find(x=>x.id===id);if(!c)return;editCoId=id;
+  document.getElementById('coDetailTitle').innerHTML=`${c.name} <span class="badge ${CO_C[c.result]||'b-gray'}" style="font-size:11px;margin-left:8px;">${c.result||''}</span>`;
+  document.getElementById('coDetailBody').innerHTML=`
+    <div class="dsec"><div class="dsec-title">기본 정보</div><div class="dgrid">
+      <div class="di"><div class="di-l">고객코드</div><div class="di-v mono">${c.code||'-'}</div></div>
+      <div class="di"><div class="di-l">연락처</div><div class="di-v">${c.phone||'-'}</div></div>
+      <div class="di"><div class="di-l">상담일</div><div class="di-v">${c.date||'-'}</div></div>
+      <div class="di"><div class="di-l">상담유형</div><div class="di-v">${c.type||'-'}</div></div>
+      <div class="di"><div class="di-l">담당직원</div><div class="di-v">${c.staff||'-'}</div></div>
+    </div></div>
+    <div class="dsec"><div class="dsec-title">여행 정보</div><div class="dgrid">
+      <div class="di"><div class="di-l">여행지</div><div class="di-v">${c.dest||'-'}</div></div>
+      <div class="di"><div class="di-l">희망 인원</div><div class="di-v">${c.count?c.count+'명':'-'}</div></div>
+      <div class="di"><div class="di-l">희망 출발일</div><div class="di-v">${c.depart||'-'}</div></div>
+      <div class="di"><div class="di-l">희망 귀국일</div><div class="di-v">${c.returnDate||'-'}</div></div>
+    </div></div>
+    ${c.content?`<div class="dsec"><div class="dsec-title">상담 내용</div><div style="font-size:13px;line-height:1.7;white-space:pre-wrap;">${c.content}</div></div>`:''}`;
+  document.getElementById('coDetailOverlay').classList.add('on');
+}
+function closeCoDetail(){document.getElementById('coDetailOverlay').classList.remove('on');}
+function editConsult(){const id=editCoId;closeCoDetail();openConsultModal(id);}
+function convertToResv(){closeCoDetail();convertToResvFrom(editCoId);}
+function convertToResvFrom(cid){const c=consults.find(x=>x.id===cid);if(!c)return;c.result='예약전환';saveData();renderConsults();openResvModal(null,c);goPage('reservations');showToast('상담 정보가 예약으로 연결됐어요!');}
+
+// 고객 상세에서 상담 추가
+function openConsultFromCust(){
+  const c=custs.find(x=>x.id===_custDetailId);
+  closeCustDetail();
+  openConsultModal(null, c);
+  goPage('consults');
+}
+
+// ── RESERVATIONS ──
+function calcNights(){const d=document.getElementById('rv-depart').value,r=document.getElementById('rv-return').value;if(d&&r){const diff=Math.round((new Date(r)-new Date(d))/86400000);document.getElementById('rv-nights').value=diff>0?diff+'박':'날짜 확인';}else document.getElementById('rv-nights').value='';}
+function calcProfit(){
+  const price=Number(document.getElementById('rv-price').value)||0;
+  const land=Number(document.getElementById('rv-land').value)||0;
+  const airActual=Number(document.getElementById('rv-air-actual').value)||0;
+  const ins=Number(document.getElementById('rv-ins').value)||0;
+  const etc=Number(document.getElementById('rv-etc').value)||0;
+  document.getElementById('rv-air').value=airActual; // 실제 항공료 → 비용 계산에 사용
+  const profit=price-land-airActual-ins-etc;
+  document.getElementById('rv-profit').value=profit.toLocaleString()+'원';
+  return profit;
+}
+function updateAapisRows(){const n=parseInt(document.getElementById('rv-count').value)||0;while(aapisRows.length<n)aapisRows.push({name:'',birth:'',passport:'',expire:''});while(aapisRows.length>n)aapisRows.pop();renderAapisTable();}
+function addAapisRow(){aapisRows.push({name:'',birth:'',passport:'',expire:''});document.getElementById('rv-count').value=aapisRows.length;renderAapisTable();}
+function renderAapisTable(){document.getElementById('aapisBody').innerHTML=aapisRows.map((r,i)=>`<tr><td style="text-align:center;font-weight:700;color:var(--text2);">${i+1}</td><td><input value="${r.name||''}" autocomplete="off" placeholder="홍길동" onchange="aapisRows[${i}].name=this.value"></td><td><input value="${r.birth||''}" autocomplete="off" placeholder="19901225" maxlength="8" style="font-family:monospace;" onchange="aapisRows[${i}].birth=this.value"></td><td><input value="${r.passport||''}" autocomplete="off" placeholder="M12345678" style="font-family:monospace;" onchange="aapisRows[${i}].passport=this.value"></td><td><input value="${r.expire||''}" autocomplete="off" placeholder="20301225" maxlength="8" style="font-family:monospace;" onchange="aapisRows[${i}].expire=this.value"></td></tr>`).join('');}
+const STEP_LABELS=['예약접수','잔금요청','완료'];
+function updateStepBar(){const cur=document.getElementById('rv-stage').value;const ci=STEP_LABELS.indexOf(cur);document.getElementById('stepBarWrap').innerHTML=`<div class="step-bar">${STEP_LABELS.map((s,i)=>`<div class="step-wrap"><div class="step-dot ${i<ci?'done':i===ci?'current':''}">${i<ci?'✓':i+1}</div><div class="step-label">${s}</div></div>${i<STEP_LABELS.length-1?`<div class="step-line ${i<ci?'done':''}"></div>`:''}`).join('')}</div>`;}
+function autoLinkCustRv(){const name=document.getElementById('rv-leader').value.trim();const c=custs.find(x=>x.name===name);document.getElementById('rv-code-display').textContent=c?c.code:'(신규)';if(c&&!document.getElementById('rv-phone').value)document.getElementById('rv-phone').value=c.phone||'';}
+function openResvModal(id=null,prefill=null){
+  editRvId=id;aapisRows=[];
+  document.getElementById('rvModalTitle').textContent=id?'예약 수정':'예약 추가';
+  document.getElementById('deleteRvBtn').style.display=id?'inline-flex':'none'; // 모든 직원 삭제 가능
+  ['rv-leader','rv-phone','rv-dest','rv-note','rv-airline','rv-pnr','rv-pnr2'].forEach(x=>document.getElementById(x).value='');
+  ['rv-price','rv-land','rv-air','rv-air-quoted','rv-air-actual','rv-ins','rv-etc','rv-count'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('rv-depart').value='';document.getElementById('rv-return').value='';
+  document.getElementById('rv-nights').value='';document.getElementById('rv-profit').value='';
+  document.getElementById('rv-stage').value='예약접수';document.getElementById('rv-pay').value='미결제';
+  document.getElementById('rv-staff').value=user.name;document.getElementById('rv-code-display').textContent='—';
+  if(id){
+    const r=resvs.find(x=>x.id===id);if(!r)return;
+    document.getElementById('rv-leader').value=r.leader||'';document.getElementById('rv-phone').value=r.phone||'';
+    document.getElementById('rv-code-display').textContent=r.code||'—';document.getElementById('rv-staff').value=r.staff||user.name;
+    document.getElementById('rv-stage').value=r.stage||'예약접수';document.getElementById('rv-pay').value=r.pay||'미결제';
+    document.getElementById('rv-dest').value=r.dest||'';document.getElementById('rv-depart').value=r.depart||'';
+    document.getElementById('rv-return').value=r.returnDate||'';document.getElementById('rv-nights').value=r.nights||'';
+    document.getElementById('rv-count').value=r.count||'';document.getElementById('rv-note').value=r.note||'';
+    document.getElementById('rv-price').value=r.price||'';document.getElementById('rv-land').value=r.land||'';
+    document.getElementById('rv-air-quoted').value=r.airQuoted||'';document.getElementById('rv-air-actual').value=r.airActual||r.air||'';
+    document.getElementById('rv-air').value=r.airActual||r.air||'';
+    document.getElementById('rv-ins').value=r.ins||'';document.getElementById('rv-etc').value=r.etc||'';
+    document.getElementById('rv-profit').value=r.profit?Number(r.profit).toLocaleString()+'원':'';
+    document.getElementById('rv-airline').value=r.airline||'';document.getElementById('rv-pnr').value=r.pnr||'';document.getElementById('rv-pnr2').value=r.pnr2||'';
+    aapisRows=r.aapis?JSON.parse(JSON.stringify(r.aapis)):[];
+  } else if(prefill){
+    document.getElementById('rv-leader').value=prefill.name||'';document.getElementById('rv-phone').value=prefill.phone||'';
+    document.getElementById('rv-dest').value=prefill.dest||'';document.getElementById('rv-depart').value=prefill.depart||'';
+    document.getElementById('rv-return').value=prefill.returnDate||'';document.getElementById('rv-count').value=prefill.count||'';
+    document.getElementById('rv-staff').value=prefill.staff||user.name;document.getElementById('rv-note').value=prefill.content||'';
+    const c=custs.find(x=>x.name===prefill.name&&x.phone===prefill.phone);
+    document.getElementById('rv-code-display').textContent=c?c.code:'(신규)';
+    if(prefill.count)updateAapisRows();if(prefill.nights)document.getElementById('rv-nights').value=prefill.nights;
+  }
+  updateStepBar();renderAapisTable();document.getElementById('rvOverlay').classList.add('on');
+}
+function closeRvModal(){document.getElementById('rvOverlay').classList.remove('on');}
+function saveResv(){
+  const leader=document.getElementById('rv-leader').value.trim();if(!leader){showToast('대표자 고객명을 입력하세요');return;}
+  const phone=document.getElementById('rv-phone').value;const code=autoGetOrCreateCode(leader,phone);
+  const price=Number(document.getElementById('rv-price').value)||0;
+  const land=Number(document.getElementById('rv-land').value)||0;
+  const airQuoted=Number(document.getElementById('rv-air-quoted').value)||0;
+  const airActual=Number(document.getElementById('rv-air-actual').value)||0;
+  const ins=Number(document.getElementById('rv-ins').value)||0;
+  const etc=Number(document.getElementById('rv-etc').value)||0;
+  const profit=price-land-airActual-ins-etc;
+  const data={id:editRvId||'rv'+Date.now(),code,leader,phone,staff:document.getElementById('rv-staff').value,stage:document.getElementById('rv-stage').value,pay:document.getElementById('rv-pay').value,dest:document.getElementById('rv-dest').value,depart:document.getElementById('rv-depart').value,returnDate:document.getElementById('rv-return').value,nights:document.getElementById('rv-nights').value,count:document.getElementById('rv-count').value,note:document.getElementById('rv-note').value,price,land,air:airActual,airQuoted,airActual,ins,etc,profit,balance:price>0?price:0,airline:document.getElementById('rv-airline').value,pnr:document.getElementById('rv-pnr').value,pnr2:document.getElementById('rv-pnr2').value,aapis:JSON.parse(JSON.stringify(aapisRows)),createdAt:editRvId?(resvs.find(r=>r.id===editRvId)?.createdAt||TODAY):TODAY};
+  if(editRvId){const i=resvs.findIndex(r=>r.id===editRvId);if(i>=0)resvs[i]=data;}else resvs.unshift(data);
+  saveData();closeRvModal();renderAll();renderAlertBanner();showToast(editRvId?'수정됐어요!':'예약이 추가됐어요!');
+}
+function deleteResv(){
+  if(!confirm('삭제할까요?'))return;
+  removeDoc('resvs',editRvId);resvs=resvs.filter(r=>r.id!==editRvId);editRvId=null;
+  saveData();closeRvModal();renderAll();renderAlertBanner();showToast('삭제됐어요');
+}
+function getFilteredResvs(){
+  const q=(document.getElementById('rvSearch')?.value||'').toLowerCase();
+  const st=document.getElementById('rvStage')?.value||'';
+  const sf=user.isAdmin?(document.getElementById('rvStaff')?.value||''):user.name;
+  return resvs.filter(r=>(!q||(r.leader||'').toLowerCase().includes(q)||(r.dest||'').toLowerCase().includes(q)||(r.code||'').toLowerCase().includes(q))&&(!st||r.stage===st)&&(!sf||r.staff===sf));
+}
+function renderResvs(){
+  const list=getFilteredResvs();const body=document.getElementById('rvBody');
+  const urgentIds=new Set(getUrgentResvs().map(r=>r.id));
+  if(!list.length){body.innerHTML=`<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">🗂</div><p>예약 내역이 없어요</p></div></td></tr>`;return;}
+  body.innerHTML=list.map(r=>{const daysLeft=r.depart?Math.ceil((new Date(r.depart)-new Date(TODAY))/86400000):null;
+    return`<tr onclick="openRvDetail('${r.id}')">
+      <td><span class="badge ${RESV_C[r.stage]||'b-gray'}">${r.stage}</span></td>
+      <td class="td-code">${r.code||'-'}</td>
+      <td class="td-name">${r.leader||'-'}${urgentIds.has(r.id)?`<span class="urgent-badge">D-${daysLeft}</span>`:''}</td>
+      <td>${r.dest||'-'}</td><td>${r.depart||'-'}</td><td>${r.returnDate||'-'}</td>
+      <td>${r.nights||'-'}</td><td>${r.count?r.count+'명':'-'}</td>
+      <td><span class="badge ${PAY_C[r.pay]||'b-gray'}">${r.pay||'-'}</span></td>
+      <td>${r.aapis?r.aapis.length+'명':'-'}</td><td>${r.staff||'-'}</td>
+    </tr>`;
+  }).join('');
+  renderPipeline();
+}
+function renderPipeline(){
+  document.getElementById('pipeWrap').innerHTML=RESV_STAGES.map(stage=>{
+    const cards=getFilteredResvs().filter(r=>r.stage===stage);
+    return`<div class="pipe-col"><div class="pipe-head"><span class="badge ${RESV_C[stage]}">${stage}</span><span class="pipe-count">${cards.length}</span></div>${cards.length?cards.map(r=>`<div class="pipe-card" onclick="openRvDetail('${r.id}')"><div class="pipe-card-code">${r.code||''}</div><div class="pipe-card-name">${r.leader||'-'}</div><div class="pipe-card-meta">${r.dest?`<span>📍 ${r.dest}</span>`:''}${r.depart?`<span>✈️ ${r.depart}</span>`:''}</div></div>`).join(''):'<div style="font-size:11px;color:var(--text3);text-align:center;padding:14px 0;">없음</div>'}</div>`;
+  }).join('');
+}
+function setResvView(v){document.getElementById('rv-list').style.display=v==='list'?'block':'none';document.getElementById('rv-pipe').style.display=v==='pipe'?'block':'none';document.getElementById('rv-list-btn').classList.toggle('on',v==='list');document.getElementById('rv-pipe-btn').classList.toggle('on',v==='pipe');if(v==='pipe')renderPipeline();}
+function openRvDetail(id){
+  const r=resvs.find(x=>x.id===id);if(!r)return;editRvId=id;
+  const ci=STEP_LABELS.indexOf(r.stage);
+  const daysLeft=r.depart?Math.ceil((new Date(r.depart)-new Date(TODAY))/86400000):null;
+  document.getElementById('rvDetailTitle').innerHTML=`${r.leader} <span class="badge ${RESV_C[r.stage]||'b-gray'}" style="font-size:11px;margin-left:8px;">${r.stage}</span>${daysLeft!==null&&daysLeft<=7&&daysLeft>=0?`<span class="urgent-badge">D-${daysLeft}</span>`:''}`;
+  const airDiff=(r.airQuoted||0)-(r.airActual||r.air||0);
+  document.getElementById('rvDetailBody').innerHTML=`
+    <div class="step-bar">${STEP_LABELS.map((s,i)=>`<div class="step-wrap"><div class="step-dot ${i<ci?'done':i===ci?'current':''}">${i<ci?'✓':i+1}</div><div class="step-label">${s}</div></div>${i<STEP_LABELS.length-1?`<div class="step-line ${i<ci?'done':''}"></div>`:''}`).join('')}</div>
+    <div class="dsec"><div class="dsec-title">기본 정보</div><div class="dgrid">
+      <div class="di"><div class="di-l">고객코드</div><div class="di-v mono">${r.code||'-'}</div></div>
+      <div class="di"><div class="di-l">연락처</div><div class="di-v">${r.phone||'-'}</div></div>
+      <div class="di"><div class="di-l">담당직원</div><div class="di-v">${r.staff||'-'}</div></div>
+      <div class="di"><div class="di-l">결제상태</div><div class="di-v"><span class="badge ${PAY_C[r.pay]||'b-gray'}">${r.pay||'-'}</span></div></div>
+    </div></div>
+    <div class="dsec"><div class="dsec-title">여행 정보</div><div class="dgrid three">
+      <div class="di"><div class="di-l">여행지</div><div class="di-v">${r.dest||'-'}</div></div>
+      <div class="di"><div class="di-l">여행인원</div><div class="di-v">${r.count?r.count+'명':'-'}</div></div>
+      <div class="di"><div class="di-l">박수</div><div class="di-v">${r.nights||'-'}</div></div>
+      <div class="di"><div class="di-l">출발일</div><div class="di-v">${r.depart||'-'}</div></div>
+      <div class="di"><div class="di-l">귀국일</div><div class="di-v">${r.returnDate||'-'}</div></div>
+    </div>${r.note?`<div class="di full" style="margin-top:8px;"><div class="di-l">메모</div><div class="di-v" style="white-space:pre-wrap;">${r.note}</div></div>`:''}</div>
+    <div class="dsec"><div class="dsec-title">항공 정보</div><div class="dgrid">
+      <div class="di"><div class="di-l">항공사</div><div class="di-v">${r.airline||'-'}</div></div>
+      <div class="di"><div class="di-l">GDS PNR</div><div class="di-v mono">${r.pnr||'-'}</div></div>
+      ${r.pnr2?`<div class="di"><div class="di-l">항공사 PNR</div><div class="di-v mono">${r.pnr2}</div></div>`:''}
+      <div class="di"><div class="di-l">✈️ 안내 항공료</div><div class="di-v">${Number(r.airQuoted||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">✈️ 실제 항공료</div><div class="di-v">${Number(r.airActual||r.air||0).toLocaleString()}원</div></div>
+      ${airDiff!==0?`<div class="di"><div class="di-l">항공 차액</div><div class="di-v" style="color:${airDiff>0?'var(--green)':'var(--red)'};font-weight:800;">${airDiff>0?'+':''}${airDiff.toLocaleString()}원</div></div>`:''}
+    </div></div>
+    <div class="dsec"><div class="dsec-title">비용/수익</div><div class="dgrid three">
+      <div class="di"><div class="di-l">상품금액</div><div class="di-v">${Number(r.price||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">지상비</div><div class="di-v">${Number(r.land||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">실제항공비</div><div class="di-v">${Number(r.airActual||r.air||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">보험료</div><div class="di-v">${Number(r.ins||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">기타</div><div class="di-v">${Number(r.etc||0).toLocaleString()}원</div></div>
+      <div class="di"><div class="di-l">수익</div><div class="di-v" style="color:${r.profit>=0?'var(--green)':'var(--red)'};font-weight:800;">${Number(r.profit||0).toLocaleString()}원</div></div>
+    </div></div>
+    <div class="dsec"><div class="dsec-title">아피스 (${(r.aapis||[]).length}명)</div>
+      ${r.aapis&&r.aapis.length?`<table class="aapis-table"><thead><tr><th>#</th><th>이름</th><th>생년월일</th><th>여권번호</th><th>만료일</th></tr></thead><tbody>${r.aapis.map((a,i)=>`<tr><td style="text-align:center;font-weight:700;">${i+1}</td><td>${a.name||'-'}</td><td>${a.birth||'-'}</td><td style="font-family:monospace;">${a.passport||'-'}</td><td>${a.expire||'-'}</td></tr>`).join('')}</tbody></table>`:'<div style="font-size:13px;color:var(--text3);">아피스 정보 없음</div>'}
+    </div>`;
+  document.getElementById('rvDetailOverlay').classList.add('on');
+}
+function closeRvDetail(){document.getElementById('rvDetailOverlay').classList.remove('on');}
+function editResv(){const id=editRvId;closeRvDetail();openResvModal(id);}
+
+// ── CUSTOMERS ──
+function autoGetOrCreateCode(name,phone){let c=custs.find(x=>x.name===name&&x.phone===phone);if(!c){c={id:'c'+Date.now(),code:genCode(),name,phone,createdAt:TODAY};custs.push(c);saveData();}return c.code;}
+function renderCustomers(){
+  const q=(document.getElementById('custSearch')?.value||'').toLowerCase();
+  const gf=document.getElementById('custGradeFilter')?.value||'';
+  const list=custs.filter(c=>{
+    const grade=getCustGrade(c).key;
+    const matchQ=!q||(c.name||'').toLowerCase().includes(q)||(c.phone||'').includes(q)||(c.code||'').toLowerCase().includes(q)||grade.includes(q);
+    const matchG=!gf||grade===gf;
+    return matchQ&&matchG;
+  });
+  const wrap=document.getElementById('custList');
+  if(!list.length){wrap.innerHTML=`<div class="empty-state"><div class="empty-icon">👥</div><p>등록된 고객이 없어요</p></div>`;return;}
+  wrap.innerHTML=list.map(c=>{
+    const cR=resvs.filter(r=>r.code===c.code);const cC=consults.filter(co=>co.code===c.code);
+    return`<div class="net-card" onclick="openCustDetail('${c.id}')">
+      <div class="net-av">${c.name.slice(1)}</div>
+      <div style="flex:1;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="net-name">${c.name}</span>
+          <span class="net-code">${c.code}</span>
+          ${gradeBadge(c)}
+          ${c.phone?`<span style="font-size:12px;color:var(--text2);">${c.phone}</span>`:''}
+        </div>
+        <div class="net-meta">${c.source||''}${c.memo?' · '+c.memo:''}</div>
+        <div class="net-tags">
+          ${cC.map(co=>`<span class="badge b-blue" style="font-size:10px;">💬 ${co.dest||'상담'} (${co.date||''})</span>`).join('')}
+          ${cR.map(r=>`<span class="badge ${RESV_C[r.stage]||'b-gray'}" style="font-size:10px;">✈️ ${r.dest||'예약'} ${r.depart?'('+r.depart+')':''}</span>`).join('')}
+          ${!cC.length&&!cR.length?'<span style="font-size:11px;color:var(--text3);">이력 없음</span>':''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function openCustDetail(id){
+  const c=custs.find(x=>x.id===id);if(!c)return;
+  _custDetailId=id;editCustId=id;
+  const cR=resvs.filter(r=>r.code===c.code&&r.stage!=='취소');
+  const cC=consults.filter(co=>co.code===c.code);
+  const totalSpend=cR.reduce((s,r)=>s+(Number(r.price)||0),0);
+  const totalProfit=cR.reduce((s,r)=>s+(Number(r.profit)||0),0);
+  const avgSpend=cR.length?Math.round(totalSpend/cR.length):0;
+  const lastResv=cR.sort((a,b)=>(b.depart||'').localeCompare(a.depart||''))[0];
+  document.getElementById('custDetailTitle').innerHTML=`${c.name} <span class="net-code">${c.code}</span> ${gradeBadge(c)}`;
+  document.getElementById('custDetailBody').innerHTML=`
+    <!-- 고객 분석 -->
+    <div class="analysis-box">
+      <div class="analysis-title">고객 분석</div>
+      <div class="analysis-grid">
+        <div class="analysis-item"><div class="analysis-label">총 상담</div><div class="analysis-value">${cC.length}건</div></div>
+        <div class="analysis-item"><div class="analysis-label">총 예약</div><div class="analysis-value">${cR.length}건</div></div>
+        <div class="analysis-item"><div class="analysis-label">총 여행 지출</div><div class="analysis-value" style="font-size:14px;">${totalSpend.toLocaleString()}</div><div class="analysis-sub">원</div></div>
+        <div class="analysis-item"><div class="analysis-label">평균 여행 금액</div><div class="analysis-value" style="font-size:14px;">${avgSpend.toLocaleString()}</div><div class="analysis-sub">원</div></div>
+      </div>
+      ${lastResv?`<div style="margin-top:10px;font-size:12px;color:rgba(255,255,255,.6);">마지막 여행: <span style="color:#6AAFD4;font-weight:700;">${lastResv.dest||'-'} (${lastResv.depart||'-'})</span></div>`:''}
+    </div>
+    <div class="dsec"><div class="dsec-title">고객 정보</div><div class="dgrid">
+      <div class="di"><div class="di-l">연락처</div><div class="di-v">${c.phone||'-'}</div></div>
+      <div class="di"><div class="di-l">이메일</div><div class="di-v">${c.email||'-'}</div></div>
+      <div class="di"><div class="di-l">생년월일</div><div class="di-v">${c.birth||'-'}</div></div>
+      <div class="di"><div class="di-l">성별</div><div class="di-v">${c.gender||'-'}</div></div>
+      <div class="di"><div class="di-l">유입경로</div><div class="di-v">${c.source||'-'}</div></div>
+      <div class="di"><div class="di-l">등급</div><div class="di-v">${gradeBadge(c)}${c.grade?'<span style="font-size:11px;color:var(--text3);margin-left:4px;">(직접 지정)</span>':'<span style="font-size:11px;color:var(--text3);margin-left:4px;">(자동)</span>'}</div></div>
+      ${c.memo?`<div class="di full"><div class="di-l">메모</div><div class="di-v" style="white-space:pre-wrap;">${c.memo}</div></div>`:''}
+    </div></div>
+    ${cC.length?`<div class="dsec"><div class="dsec-title">상담 이력 (${cC.length}건)</div>${cC.map(co=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="closeCustDetail();setTimeout(()=>openCoDetail('${co.id}'),100)"><div><div style="font-weight:700;color:var(--navy);">${co.dest||'여행지 미정'}</div><div style="font-size:12px;color:var(--text2);">${co.date||''} · ${co.count?co.count+'명':''} · ${co.staff||''}</div>${co.content?`<div style="font-size:12px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:340px;">${co.content}</div>`:''}</div><span class="badge ${CO_C[co.result]||'b-gray'}">${co.result}</span></div>`).join('')}</div>`:''}
+    ${cR.length?`<div class="dsec"><div class="dsec-title">예약 이력 (${cR.length}건)</div>${cR.map(r=>`<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;" onclick="closeCustDetail();setTimeout(()=>openRvDetail('${r.id}'),100)"><div><div style="font-weight:700;color:var(--navy);">${r.dest||'-'}</div><div style="font-size:12px;color:var(--text2);">${r.depart||''} ${r.nights?'· '+r.nights:''} · ${r.count?r.count+'명':''}</div></div><span class="badge ${RESV_C[r.stage]||'b-gray'}">${r.stage}</span></div>`).join('')}</div>`:''}
+    ${!cC.length&&!cR.length?'<div class="empty-state"><div class="empty-icon">📭</div><p>이력 없음</p></div>':''}`;
+  document.getElementById('custDetailOverlay').classList.add('on');
+}
+function closeCustDetail(){document.getElementById('custDetailOverlay').classList.remove('on');}
+function editCustFromDetail(){const id=editCustId;closeCustDetail();openCustModal(id);}
+function openCustModal(id=null){
+  editCustId=id;document.getElementById('custModalTitle').textContent=id?'고객 수정':'고객 추가';
+  document.getElementById('deleteCustBtn').style.display=(id&&user&&user.isAdmin)?'inline-flex':'none';
+  if(id){const c=custs.find(x=>x.id===id);if(!c)return;const np=splitName(c.name||'');document.getElementById('c-last').value=np.last;document.getElementById('c-first').value=np.first;document.getElementById('c-name').value=c.name||'';document.getElementById('c-phone').value=c.phone||'';document.getElementById('c-email').value=c.email||'';document.getElementById('c-birth').value=c.birth||'';document.getElementById('c-gender').value=c.gender||'';document.getElementById('c-source').value=c.source||'';document.getElementById('c-grade').value=c.grade||'';document.getElementById('c-memo').value=c.memo||'';document.getElementById('cust-code-display').textContent=c.code||'-';}
+  else{['c-name','c-phone','c-email','c-memo'].forEach(x=>document.getElementById(x).value='');document.getElementById('c-last').value='';document.getElementById('c-first').value='';document.getElementById('c-birth').value='';document.getElementById('c-gender').value='';document.getElementById('c-source').value='';document.getElementById('c-grade').value='';document.getElementById('cust-code-display').textContent='저장 시 자동 생성';}
+  document.getElementById('custOverlay').classList.add('on');
+}
+function closeCustModal(){document.getElementById('custOverlay').classList.remove('on');}
+function saveCust(){
+  combineName();const name=document.getElementById('c-name').value.trim();if(!name){showToast('성과 이름을 입력하세요');return;}
+  const existing=editCustId?custs.find(c=>c.id===editCustId):null;
+  const data={id:editCustId||'c'+Date.now(),code:existing?.code||genCode(),name,phone:document.getElementById('c-phone').value,email:document.getElementById('c-email').value,birth:document.getElementById('c-birth').value,gender:document.getElementById('c-gender').value,source:document.getElementById('c-source').value,grade:document.getElementById('c-grade').value,memo:document.getElementById('c-memo').value,createdAt:existing?.createdAt||TODAY};
+  if(editCustId){const i=custs.findIndex(c=>c.id===editCustId);if(i>=0)custs[i]=data;}else custs.unshift(data);
+  saveData();closeCustModal();renderCustomers();showToast(editCustId?'수정됐어요!':'고객이 추가됐어요!');
+}
+function deleteCust(){if(!confirm('삭제할까요?'))return;removeDoc('custs',editCustId);custs=custs.filter(c=>c.id!==editCustId);editCustId=null;saveData();closeCustModal();renderCustomers();showToast('삭제됐어요');}
+
+// ── CALENDAR ──
+function renderCalendar(){
+  document.getElementById('calMonth').textContent=`${calY}년 ${calM+1}월`;
+  const first=new Date(calY,calM,1);const last=new Date(calY,calM+1,0);let html='';
+  for(let i=0;i<first.getDay();i++)html+='<div class="cal-cell"></div>';
+  for(let d=1;d<=last.getDate();d++){
+    const ds=`${calY}-${String(calM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===TODAY;const daysLeft=Math.ceil((new Date(ds)-new Date(TODAY))/86400000);
+    const evs=resvs.filter(r=>r.depart===ds&&r.stage!=='취소'&&staffFilter(r));
+    html+=`<div class="cal-cell"><div class="cal-date ${isToday?'today':''}">${d}</div>${evs.map(r=>`<div class="cal-event ${r.stage==='완료'?'ev-green':daysLeft<=7&&daysLeft>=0?'ev-red':'ev-blue'}" onclick="openRvDetail('${r.id}')">${r.leader}${r.dest?' · '+r.dest:''}</div>`).join('')}</div>`;
+  }
+  document.getElementById('calBody').innerHTML=html;
+}
+function calPrev(){calM--;if(calM<0){calM=11;calY--;}renderCalendar();}
+function calNext(){calM++;if(calM>11){calM=0;calY++;}renderCalendar();}
+
+// ── 통계 ──
+function renderStats(){
+  const now=new Date();const yearEl=document.getElementById('statsYear');
+  const years=new Set([now.getFullYear()]);
+  resvs.forEach(r=>{if(r.createdAt)years.add(parseInt(r.createdAt.slice(0,4)));});
+  consults.forEach(c=>{if(c.date)years.add(parseInt(c.date.slice(0,4)));});
+  const yearList=[...years].sort((a,b)=>b-a);
+  if(!yearEl.options.length)yearEl.innerHTML=yearList.map(y=>`<option value="${y}">${y}년</option>`).join('');
+  const year=parseInt(yearEl.value)||now.getFullYear();
+  const yearResvs=resvs.filter(r=>(r.createdAt||'').startsWith(String(year))&&r.stage!=='취소'&&staffFilter(r));
+  const yearCons=consults.filter(c=>(c.date||'').startsWith(String(year))&&staffFilter(c));
+  const totalProfit=yearResvs.reduce((s,r)=>s+(Number(r.profit)||0),0);
+  const converted=consults.filter(c=>(c.date||'').startsWith(String(year))&&c.result==='예약전환'&&staffFilter(c)).length;
+  const convRate=yearCons.length?Math.round(converted/yearCons.length*100):0;
+  document.getElementById('statsCards').innerHTML=`
+    <div class="stat-card"><div class="stat-label">${year}년 상담</div><div class="stat-value">${yearCons.length}</div><div class="stat-sub">건</div></div>
+    <div class="stat-card"><div class="stat-label">${year}년 예약</div><div class="stat-value">${yearResvs.length}</div><div class="stat-sub">건</div></div>
+    <div class="stat-card"><div class="stat-label">${year}년 수익</div><div class="stat-value">${Math.round(totalProfit/10000)}</div><div class="stat-sub">만원</div></div>
+    <div class="stat-card"><div class="stat-label">예약 전환율</div><div class="stat-value">${convRate}</div><div class="stat-sub">%</div></div>`;
+  const mProfit=Array(12).fill(0);yearResvs.forEach(r=>{const m=parseInt((r.createdAt||'').slice(5,7));if(m>=1&&m<=12)mProfit[m-1]+=Number(r.profit)||0;});
+  const mCons=Array(12).fill(0);yearCons.forEach(c=>{const m=parseInt((c.date||'').slice(5,7));if(m>=1&&m<=12)mCons[m-1]++;});
+  destroyCharts();
+  const opts={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}};
+  chartObjs.revenue=new Chart(document.getElementById('chartRevenue'),{type:'bar',data:{labels:MONTHS,datasets:[{data:mProfit,backgroundColor:'rgba(74,144,184,.75)',borderRadius:6,borderSkipped:false}]},options:{...opts,scales:{y:{ticks:{callback:v=>(v/10000)+'만',font:{size:10}},grid:{color:'#F0F4F8'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+  chartObjs.consults=new Chart(document.getElementById('chartConsults'),{type:'line',data:{labels:MONTHS,datasets:[{data:mCons,borderColor:'#4A7BC8',backgroundColor:'rgba(74,123,200,.1)',tension:.4,fill:true,pointRadius:4,pointBackgroundColor:'#4A7BC8'}]},options:{...opts,scales:{y:{ticks:{font:{size:10},precision:0},grid:{color:'#F0F4F8'}},x:{grid:{display:false},ticks:{font:{size:10}}}}}});
+}
+function destroyCharts(){Object.values(chartObjs).forEach(c=>{try{c.destroy();}catch(e){}});chartObjs={};}
+
+// ── 문자 템플릿 ──
+function renderTemplates(){
+  const myResvs=resvs.filter(r=>staffFilter(r)&&r.stage!=='취소').slice(0,30);
+  const sel=document.getElementById('tplResvSel');
+  sel.innerHTML='<option value="">— 예약 선택 (자동 채우기) —</option>'+myResvs.map(r=>`<option value="${r.id}">${r.leader} · ${r.dest||''} · ${r.depart||''}</option>`).join('');
+  renderTplCards(null);
+}
+function fillTemplate(){const id=document.getElementById('tplResvSel').value;renderTplCards(id?resvs.find(x=>x.id===id):null);}
+function applyTpl(body,r){if(!r)return body;const cn=getCrmName();return body.replace(/{{고객명}}/g,r.leader||'고객님').replace(/{{여행사}}/g,cn).replace(/{{여행지}}/g,r.dest||'').replace(/{{출발일}}/g,r.depart||'').replace(/{{귀국일}}/g,r.returnDate||'').replace(/{{인원}}/g,r.count||'').replace(/{{담당자}}/g,r.staff||'').replace(/{{항공사}}/g,r.airline||'');}
+function renderTplCards(r){
+  const templates=getTemplates();const grid=document.getElementById('tplGrid');
+  if(!templates.length){grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1;"><div class="empty-icon">💬</div><p>템플릿이 없어요</p></div>`;return;}
+  grid.innerHTML=templates.map(t=>`<div class="tpl-card"><div class="tpl-head"><div class="tpl-title">${t.icon||'💬'} ${t.title}</div></div><div class="tpl-body">${applyTpl(t.body,r)}</div><div class="tpl-actions"><button class="tpl-copy-btn" onclick="copyTpl('${t.id}')">📋 복사</button><button class="tpl-edit-btn" onclick="openTplModal('${t.id}')">✏️ 수정</button><button class="tpl-del-btn" onclick="deleteTplById('${t.id}')">🗑 삭제</button></div></div>`).join('');
+}
+function copyTpl(id){const templates=getTemplates();const t=templates.find(x=>x.id===id);if(!t)return;const rid=document.getElementById('tplResvSel').value;const r=rid?resvs.find(x=>x.id===rid):null;navigator.clipboard.writeText(applyTpl(t.body,r)).then(()=>showToast('복사됐어요! 📋')).catch(()=>showToast('직접 선택해서 복사해주세요'));}
+let editingTplId=null;
+function openTplModal(id=null){editingTplId=id;document.getElementById('tplModalTitle').textContent=id?'템플릿 수정':'템플릿 추가';document.getElementById('deleteTplBtn').style.display=id?'inline-flex':'none';if(id){const t=getTemplates().find(x=>x.id===id);if(!t)return;document.getElementById('tpl-title-input').value=t.title;document.getElementById('tpl-icon-input').value=t.icon||'💬';document.getElementById('tpl-body-input').value=t.body;}else{document.getElementById('tpl-title-input').value='';document.getElementById('tpl-icon-input').value='💬';document.getElementById('tpl-body-input').value='';}document.getElementById('tplOverlay').classList.add('on');}
+function closeTplModal(){document.getElementById('tplOverlay').classList.remove('on');}
+function saveTpl(){const title=document.getElementById('tpl-title-input').value.trim();const body=document.getElementById('tpl-body-input').value.trim();if(!title){showToast('제목을 입력하세요');return;}if(!body){showToast('내용을 입력하세요');return;}const icon=document.getElementById('tpl-icon-input').value.trim()||'💬';const templates=getTemplates();if(editingTplId){const i=templates.findIndex(x=>x.id===editingTplId);if(i>=0)templates[i]={...templates[i],title,icon,body};}else templates.push({id:genTplId(),title,icon,body});saveTplData(templates);closeTplModal();const rid=document.getElementById('tplResvSel').value;renderTplCards(rid?resvs.find(x=>x.id===rid):null);showToast(editingTplId?'수정됐어요!':'추가됐어요!');}
+function deleteTpl(){deleteTplById(editingTplId);}
+function deleteTplById(id){if(!confirm('삭제할까요?'))return;saveTplData(getTemplates().filter(x=>x.id!==id));closeTplModal();const rid=document.getElementById('tplResvSel').value;renderTplCards(rid?resvs.find(x=>x.id===rid):null);showToast('삭제됐어요');}
+
+// ── 성과 ──
+function renderPerformance(){
+  const thisM=TODAY.slice(0,7);const staffList=getStaffList();
+  document.getElementById('perfStaffCards').innerHTML=staffList.map((st,idx)=>{
+    const allCons=consults.filter(c=>c.staff===st.name);const allResvs=resvs.filter(r=>r.staff===st.name&&r.stage!=='취소');
+    const thisMonthProfit=allResvs.filter(r=>(r.createdAt||'').startsWith(thisM)).reduce((s,r)=>s+(Number(r.profit)||0),0);
+    return`<div onclick="openPerfDetail(${idx})" style="background:var(--card);border-radius:12px;border:1px solid var(--border);padding:18px 20px;cursor:pointer;transition:border-color .15s;" onmouseover="this.style.borderColor='var(--sky)'" onmouseout="this.style.borderColor='var(--border)'">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;"><div><div style="font-size:16px;font-weight:700;">${st.name}${st.isAdmin?'<span class="admin-tag">관리자</span>':''}</div><div style="font-size:13px;color:var(--text3);">${st.role}</div></div><div style="color:var(--text3);">→</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">상담</div><div style="font-size:22px;font-weight:700;">${allCons.length}<span style="font-size:12px;color:var(--text3);">건</span></div></div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">예약</div><div style="font-size:22px;font-weight:700;">${allResvs.length}<span style="font-size:12px;color:var(--text3);">건</span></div></div>
+        <div style="background:var(--bg);border-radius:8px;padding:10px 12px;"><div style="font-size:11px;color:var(--text3);margin-bottom:4px;">이번달</div><div style="font-size:15px;font-weight:700;color:var(--sky);">${thisMonthProfit.toLocaleString()}<span style="font-size:11px;">원</span></div></div>
+      </div></div>`;
+  }).join('');
+  document.getElementById('perfDetail').style.display='none';
+}
+function openPerfDetail(idx){
+  const st=getStaffList()[idx];if(!st)return;const now=new Date();const curYear=now.getFullYear();
+  const allResvs=resvs.filter(r=>r.staff===st.name&&r.stage!=='취소');
+  const mProfit=Array(12).fill(0);allResvs.filter(r=>(r.createdAt||'').startsWith(String(curYear))).forEach(r=>{const m=parseInt((r.createdAt||'').slice(5,7));if(m)mProfit[m-1]+=Number(r.profit)||0;});
+  const el=document.getElementById('perfDetail');el.style.display='block';
+  el.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;"><div style="font-size:16px;font-weight:800;color:var(--navy);">${st.name} · ${curYear}년</div><button onclick="this.closest('#perfDetail').style.display='none'" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--text2);">×</button></div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;">${MONTHS.map((mn,i)=>{const p=mProfit[i];const isThis=i===now.getMonth();return`<div style="background:${isThis?'#3D5166':p>0?'var(--green-bg)':'var(--bg)'};border-radius:10px;padding:11px 13px;border:1.5px solid ${isThis?'#3D5166':p>0?'var(--green)':'var(--border)'}"><div style="font-size:11px;font-weight:700;color:${isThis?'rgba(255,255,255,.7)':p>0?'var(--green)':'var(--text3)'};">${mn}${isThis?' ●':''}</div><div style="font-size:${p>0?'14px':'12px'};font-weight:800;color:${isThis?'#6AAFD4':p>0?'var(--green)':'var(--text3)'};">${p>0?p.toLocaleString()+'원':'—'}</div></div>`;}).join('')}</div>`;
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ── ADMIN ──
+function renderAdmin(){
+  const s=getSettings();document.getElementById('admin-crm-name').value=s.crmName||'여행사 CRM';document.getElementById('admin-crm-logo').value=s.crmLogo||'✈️';
+  const pL={'all':'🔵 전체','flight':'✈️ 항공만','consult':'💬 상담만'};
+  document.getElementById('adminStaffBody').innerHTML=s.staff.map((st,i)=>`<tr><td style="font-weight:700;">${st.name}</td><td style="color:var(--text2);">${st.role}</td><td><span class="badge ${st.perm==='all'?'b-blue':st.perm==='flight'?'b-orange':'b-yellow'}">${pL[st.perm]||st.perm}</span></td><td>${st.isAdmin?'<span class="admin-tag">관리자</span>':'—'}</td><td style="font-family:monospace;color:var(--text3);">${'•'.repeat(st.pw.length)}</td><td><button class="btn btn-secondary" style="padding:4px 10px;font-size:11px;" onclick="openStaffModal(${i})">수정</button></td></tr>`).join('');
+}
+function saveCrmSettings(){const s=getSettings();s.crmName=document.getElementById('admin-crm-name').value.trim()||'여행사 CRM';s.crmLogo=document.getElementById('admin-crm-logo').value.trim()||'✈️';saveSettings(s);document.getElementById('crmBrandName').textContent=s.crmLogo+' '+s.crmName;document.title=s.crmName;renderLoginStaff();showToast('저장됐어요!');}
+function openStaffModal(idx=null){editStaffIdx=idx;document.getElementById('staffModalTitle').textContent=idx!==null?'직원 수정':'직원 추가';document.getElementById('deleteStaffBtn').style.display=idx!==null?'inline-flex':'none';if(idx!==null){const st=getSettings().staff[idx];document.getElementById('sm-name').value=st.name;document.getElementById('sm-role').value=st.role;document.getElementById('sm-pw').value=st.pw;document.getElementById('sm-perm').value=st.perm||'all';document.getElementById('sm-admin').value=st.isAdmin?'true':'false';}else{['sm-name','sm-role','sm-pw'].forEach(x=>document.getElementById(x).value='');document.getElementById('sm-perm').value='all';document.getElementById('sm-admin').value='false';}document.getElementById('staffOverlay').classList.add('on');}
+function closeStaffModal(){document.getElementById('staffOverlay').classList.remove('on');}
+function saveStaff(){const name=document.getElementById('sm-name').value.trim();if(!name){showToast('이름을 입력하세요');return;}const pw=document.getElementById('sm-pw').value;if(!pw){showToast('비밀번호를 입력하세요');return;}const s=getSettings();const newSt={name,role:document.getElementById('sm-role').value||'상담사',pw,perm:document.getElementById('sm-perm').value,isAdmin:document.getElementById('sm-admin').value==='true'};if(editStaffIdx!==null)s.staff[editStaffIdx]=newSt;else s.staff.push(newSt);saveSettings(s);closeStaffModal();renderAdmin();renderLoginStaff();showToast(editStaffIdx!==null?'수정됐어요!':'추가됐어요!');}
+function deleteStaff(){if(editStaffIdx===null)return;const s=getSettings();if(s.staff[editStaffIdx]?.isAdmin){showToast('관리자는 삭제할 수 없어요');return;}if(s.staff.length<=1){showToast('직원이 최소 1명은 있어야 해요');return;}if(!confirm('삭제할까요?'))return;s.staff.splice(editStaffIdx,1);saveSettings(s);closeStaffModal();renderAdmin();renderLoginStaff();showToast('삭제됐어요');}
+
+// ── 가져오기/내보내기 ──
+let _pwAction=null;
+function openImportPwModal(action){_pwAction=action;document.getElementById('importPwTitle').textContent=action==='export'?'🔐 내보내기 확인':'🔐 가져오기 확인';document.getElementById('importPwDesc').textContent=action==='export'?'고객 목록 내보내기는 관리자 비밀번호 확인 후 진행됩니다.':'엑셀 고객 가져오기는 관리자 비밀번호 확인 후 진행됩니다.';document.getElementById('importPwInput').value='';document.getElementById('importPwErr').style.display='none';document.getElementById('importPwOverlay').classList.add('on');setTimeout(()=>document.getElementById('importPwInput').focus(),80);}
+function closeImportPwModal(){document.getElementById('importPwOverlay').classList.remove('on');}
+function confirmImportPw(){const pw=document.getElementById('importPwInput').value;const admin=getStaffList().find(s=>s.isAdmin&&s.name===user.name);if(admin&&admin.pw===pw){closeImportPwModal();if(_pwAction==='export')exportExcel();else document.getElementById('excelInput').click();}else{document.getElementById('importPwErr').style.display='block';document.getElementById('importPwInput').value='';}}
+function exportExcel(){if(!custs.length){showToast('내보낼 고객이 없어요');return;}const rows=custs.map(c=>({'고객코드':c.code||'','고객명':c.name||'','등급':getCustGrade(c).key,'연락처':c.phone||'','이메일':c.email||'','생년월일':c.birth||'','성별':c.gender||'','유입경로':c.source||'','메모':c.memo||'','등록일':c.createdAt||''}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'고객목록');XLSX.writeFile(wb,`${getCrmName()}_고객목록_${TODAY.replace(/-/g,'')}.xlsx`);showToast('내보냈어요! 📥');}
+function importExcel(input){
+  const file=input.files[0];if(!file)return;
+  const statusEl=document.getElementById('importStatus');statusEl.style.display='block';statusEl.style.background='var(--blue-bg)';statusEl.style.color='var(--blue)';statusEl.textContent='파일 읽는 중...';
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{let rows=[];if(file.name.endsWith('.csv')){const text=e.target.result;const lines=text.split(/\r?\n/).filter(l=>l.trim());const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,''));rows=lines.slice(1).map(line=>{const vals=line.split(',').map(v=>v.trim().replace(/^"|"$/g,''));const obj={};headers.forEach((h,i)=>obj[h]=vals[i]||'');return obj;});}else{const data=new Uint8Array(e.target.result);const wb=XLSX.read(data,{type:'array'});rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});}
+    const colMap={name:['고객명','이름','name'],phone:['연락처','전화번호','phone'],email:['이메일','email'],birth:['생년월일','birth'],gender:['성별','gender'],source:['유입경로','source'],memo:['메모','비고','memo']};
+    function findCol(row,keys){for(const k of keys)for(const rk of Object.keys(row))if(rk.trim()===k)return row[rk]||'';return'';}
+    let added=0,skipped=0;
+    rows.forEach(row=>{const name=findCol(row,colMap.name);const phone=String(findCol(row,colMap.phone)).replace(/[^0-9\-]/g,'');if(!name){skipped++;return;}if(custs.find(c=>c.name===name&&c.phone===phone)){skipped++;return;}custs.unshift({id:'c'+Date.now()+Math.random().toString(36).slice(2,5),code:genCode(),name,phone:phone.length===11?phone.slice(0,3)+'-'+phone.slice(3,7)+'-'+phone.slice(7):phone,email:findCol(row,colMap.email),birth:String(findCol(row,colMap.birth)).replace(/[^0-9]/g,''),gender:findCol(row,colMap.gender),source:findCol(row,colMap.source),memo:findCol(row,colMap.memo),createdAt:TODAY});added++;});
+    saveData();renderCustomers();statusEl.style.background='var(--green-bg)';statusEl.style.color='var(--green)';statusEl.textContent=`✅ ${added}명 추가! (중복 ${skipped}건 건너뜀)`;setTimeout(()=>statusEl.style.display='none',4000);
+    }catch(err){statusEl.style.background='var(--red-bg)';statusEl.style.color='var(--red)';statusEl.textContent='❌ 파일 읽기 실패: '+err.message;}
+    input.value='';
+  };
+  if(file.name.endsWith('.csv'))reader.readAsText(file,'UTF-8');else reader.readAsArrayBuffer(file);
+}
+
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2400);}
+function renderAll(){renderDashboard();renderConsults();renderResvs();renderCustomers();renderCalendar();}
+renderLoginStaff();
+</script>
+</body>
+</html>
